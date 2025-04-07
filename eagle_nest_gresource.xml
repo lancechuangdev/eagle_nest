@@ -1,0 +1,7 @@
+<gresources>
+  <gresource prefix="/com/example/eagle_nest">
+    <file>explore.svg</file>
+    <file>toolkit.svg</file>
+    <file>model.svg</file>
+  </gresource>
+</gresources>
