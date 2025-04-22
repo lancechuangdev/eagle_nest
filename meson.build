@@ -1,7 +1,8 @@
 project('eagle_nest', 'cpp')
 
 # Core dependencies
-gtkmm_dep = dependency('gtkmm-3.0', version: '>= 3.24.0')
+gtkmm_dep = dependency('gtkmm-3.0', version: '>= 3.24.0', required: true)
+json_dep = dependency('nlohmann_json', required: true)
 
 # -------------------------------
 # Resource Compilation
@@ -22,6 +23,6 @@ resource_target = gnome.compile_resources(
 # -------------------------------
 
 executable('en', 
-    [resource_target, 'main.cpp', 'main_window.cpp'],
+    [resource_target, 'main.cpp', 'main_window.cpp', 'app_paths.cpp'],
     dependencies: [gtkmm_dep]
 )
