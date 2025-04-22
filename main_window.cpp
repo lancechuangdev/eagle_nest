@@ -83,7 +83,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_dataset_sources_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_sources_refresh_clicked));
     }
 
-    m_builder->get_widget("dataset_sources_lbox", m_dataset_sources_lbox);
+    m_builder->get_widget("dataset_sources_grid", m_dataset_sources_grid);
     add_dataset_sources_header();
 }
 
@@ -235,114 +235,106 @@ void MainWindow::on_dataset_sources_refresh_clicked()
 
     // Launch detection in a separate thread
     std::thread([this]() {
-        refresh_dataset_sources();
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect([this]() {
+        Glib::signal_idle().connect_once([this]() {
+            refresh_dataset_sources();
             m_dataset_sources_refresh_btn->set_sensitive(true);
-            return false; // Disconnect idle handler
         });
     }).detach(); // Detach the thread to allow it to run independently
 }
 
 void MainWindow::refresh_dataset_sources()
 {
-    remove_dataset_sources_except_header();
-    add_dataset_source_row("Local Datasets", "Local", "~/eagle_eye/detection_projects");
-    add_dataset_source_row("USB Datasets", "USB", "/path/to/usb");
-    add_dataset_source_row("Remote Datasets", "Network", "192.168.1.2");
+    clear_dataset_sources();
+    add_dataset_sources_header();
+    add_dataset_source_row(1, "Local Datasets", "Local", "~/eagle_eye/detection_projects");
+    add_dataset_source_row(2, "USB Datasets", "USB", "/path/to/usb");
+    add_dataset_source_row(3, "Remote Datasets", "Network", "192.168.1.2");
     update_all_datasource_connection_status();
 }
 
 void MainWindow::add_dataset_sources_header()
 {
-    auto header_grid = Gtk::make_managed<Gtk::Grid>();
-    header_grid->set_margin_top(5);
-    header_grid->set_margin_bottom(5);
-    header_grid->set_margin_start(10);
-    header_grid->set_margin_end(10);
-    header_grid->set_column_homogeneous(true);
+    int row = 0;
 
-    auto name_label = Gtk::make_managed<Gtk::Label>("Name");
-    name_label->set_halign(Gtk::Align::ALIGN_START);
-    name_label->get_style_context()->add_class("heading");
-
-    auto type_label = Gtk::make_managed<Gtk::Label>("Source Type");
-    type_label->set_halign(Gtk::Align::ALIGN_START);
-    type_label->get_style_context()->add_class("heading");
-
-    auto info_label = Gtk::make_managed<Gtk::Label>("Connection Info");
-    info_label->set_halign(Gtk::Align::ALIGN_START);
-    info_label->get_style_context()->add_class("heading");
-
-    auto status_label = Gtk::make_managed<Gtk::Label>("Connection Status");
-    status_label->set_halign(Gtk::Align::ALIGN_START);
-    status_label->get_style_context()->add_class("heading");
-
-    // "Select All" checkbox
-    auto select_all_cb = Gtk::make_managed<Gtk::CheckButton>();
-    select_all_cb->set_tooltip_text("Select/Deselect All");
-    select_all_cb->set_active(true);
-
-    // Save checkbox pointer if you want to control all rows from it
-    m_select_all_datasources_cbtn = select_all_cb;
-
-    // Optional: connect signal to toggle all checkboxes
-    m_select_all_datasources_cbtn->signal_toggled().connect([this]() {
-        bool active = m_select_all_datasources_cbtn->get_active();
-        for (auto* row : m_dataset_sources_lbox->get_children())
+    // Checkbox
+    auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
+    checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
+    checkbox->set_active(true);
+    checkbox->signal_toggled().connect([this, checkbox]() {
+        bool is_checked = checkbox->get_active();
+        if (is_checked)
         {
-            auto* list_row = dynamic_cast<Gtk::ListBoxRow*>(row);
-            if (!list_row || !list_row->get_selectable()) continue;
-
-            auto* grid = dynamic_cast<Gtk::Grid*>(list_row->get_child());
-            if (!grid) continue;
-
-            auto* cb = dynamic_cast<Gtk::CheckButton*>(grid->get_child_at(0, 0));
-            if (cb) cb->set_active(active);
+            for (auto* cb : m_datasources_checkboxes)
+            {
+                cb->set_active(true);
+            }
         }
+        else
+        {
+            for (auto* cb : m_datasources_checkboxes)
+            {
+                cb->set_active(false);
+            }
+        }
+        std::cout << "Select All toggled: " << (is_checked ? "Checked" : "Unchecked") << std::endl;
     });
+    m_dataset_sources_grid->attach(*checkbox, 0, row, 1, 1);
 
-    header_grid->attach(*select_all_cb, 0, 0, 1, 1);
-    header_grid->attach(*name_label, 1, 0, 1, 1);
-    header_grid->attach(*type_label, 2, 0, 1, 1);
-    header_grid->attach(*info_label, 3, 0, 1, 1);
-    header_grid->attach(*status_label, 4, 0, 1, 1);
+    // Name label
+    auto name_label = Gtk::make_managed<Gtk::Label>("Name");
+    name_label->get_style_context()->add_class("heading");
+    name_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*name_label, 1, row, 1, 1);
 
-    // Insert at the top
-    m_dataset_sources_lbox->append(*header_grid);
-    m_dataset_sources_lbox->show_all_children();
+    // Type label
+    auto type_label = Gtk::make_managed<Gtk::Label>("Source Type");
+    type_label->get_style_context()->add_class("heading");
+    type_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*type_label, 2, row, 1, 1);
+
+    // Connection Info label
+    auto info_label = Gtk::make_managed<Gtk::Label>("Connection Info");
+    info_label->get_style_context()->add_class("heading");
+    info_label->set_halign(Gtk::Align::ALIGN_START);
+    info_label->set_hexpand(true);
+    m_dataset_sources_grid->attach(*info_label, 3, row, 1, 1);
+
+    // Connection Status label
+    auto status_label = Gtk::make_managed<Gtk::Label>("Connection Status");
+    status_label->get_style_context()->add_class("heading");
+    status_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*status_label, 4, row, 1, 1);
+
+    m_dataset_sources_grid->show_all_children();
 }
 
-void MainWindow::remove_dataset_sources_except_header()
+void MainWindow::clear_dataset_sources()
 {
-    auto children = m_dataset_sources_lbox->get_children();
-    for (size_t i = 1; i < children.size(); ++i)
+    auto children = m_dataset_sources_grid->get_children();
+    for (auto* child : children)
     {
-        auto* row = dynamic_cast<Gtk::ListBoxRow*>(children[i]);
-        if (row) m_dataset_sources_lbox->remove(*row);
+        m_dataset_sources_grid->remove(*child);
     }
+    m_dataset_sources_grid->show_all_children();
+    m_datasources_checkboxes.clear();
+    m_datasources_connections.clear();
 }
 
-void MainWindow::add_dataset_source_row(const std::string& name,
+void MainWindow::add_dataset_source_row(size_t row_index,
+    const std::string& name,
     const std::string& type,
     const std::string& connection_info,
     bool checked,
     const std::string& connection_status)
 {
-    // Create a new row and horizontal box
-    auto row = Gtk::make_managed<Gtk::ListBoxRow>();
-    auto grid = Gtk::make_managed<Gtk::Grid>();
-    grid->set_margin_top(5);
-    grid->set_margin_bottom(5);
-    grid->set_margin_start(10);
-    grid->set_margin_end(10);
-    grid->set_column_homogeneous(true);
+    int row = row_index;
 
-    // Checkbox for selection
+    // Checkbox
     auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
-    checkbox->set_hexpand(false);
-    checkbox->set_halign(Gtk::Align::ALIGN_START);
+    m_datasources_checkboxes.push_back(checkbox);
+    checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
     checkbox->set_active(checked);
     checkbox->signal_toggled().connect([this, checkbox, name]() {
         bool is_checked = checkbox->get_active();
@@ -350,55 +342,50 @@ void MainWindow::add_dataset_source_row(const std::string& name,
     
         // Optionally update your internal state here
     });
+    m_dataset_sources_grid->attach(*checkbox, 0, row, 1, 1);
 
-    // Source Name label
+    // Name label
     auto name_label = Gtk::make_managed<Gtk::Label>(name);
     name_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*name_label, 1, row, 1, 1);
 
-    // Source Type label (Local, USB, Network)
+    // Type label
     auto type_label = Gtk::make_managed<Gtk::Label>(type);
     type_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*type_label, 2, row, 1, 1);
 
-    // Connection Info label (IP address or path)
+    // Connection Info label
     auto info_label = Gtk::make_managed<Gtk::Label>(connection_info);
     info_label->set_halign(Gtk::Align::ALIGN_START);
+    info_label->set_hexpand(true);
+    m_dataset_sources_grid->attach(*info_label, 3, row, 1, 1);
 
-    // Connection Status label (Connected, Disconnected, Unknown)
-    auto status_label = Gtk::make_managed<Gtk::Label>(connection_status);
+    // Connection Status label
+    auto status_label = Gtk::make_managed<Gtk::Label>("Unknown");
     status_label->set_halign(Gtk::Align::ALIGN_START);
+    m_dataset_sources_grid->attach(*status_label, 4, row, 1, 1);
 
-    grid->attach(*checkbox, 0, 0, 1, 1);
-    grid->attach(*name_label, 1, 0, 1, 1);
-    grid->attach(*type_label, 2, 0, 1, 1);
-    grid->attach(*info_label, 3, 0, 1, 1);
-    grid->attach(*status_label, 4, 0, 1, 1);
+    // Store the connection info and status for later use
+    m_datasources_connections.emplace_back(info_label, status_label);
 
-    row->add(*grid);
-    m_dataset_sources_lbox->append(*row);
-    m_dataset_sources_lbox->show_all_children();
+    m_dataset_sources_grid->show_all_children();
 }
+
 
 void MainWindow::update_all_datasource_connection_status()
 {
-    for (auto* child : m_dataset_sources_lbox->get_children())
+    for (const auto& [info_label, status_label] : m_datasources_connections) 
     {
-        auto* row = dynamic_cast<Gtk::ListBoxRow*>(child);
-        if (!row) continue;
-
-        auto* grid = dynamic_cast<Gtk::Grid*>(row->get_child());
-        if (!grid) continue;
-
-        // Get the Connection Info label (to be in column 3)
-        auto* connection_info_label = dynamic_cast<Gtk::Label*>(grid->get_child_at(3, 0));
-        if (!connection_info_label) continue;
-        auto connection_info = connection_info_label->get_text();
-
-        // Get the Connection Status label (to be in column 4)
-        auto* status_label = dynamic_cast<Gtk::Label*>(grid->get_child_at(4, 0));
-        if (!status_label) continue;
-
-        auto connection_status = get_connection_status(connection_info);
-        status_label->set_text(connection_status);
+        if (info_label && status_label)
+        {
+            auto connection_info = info_label->get_text();
+            auto connection_status = get_connection_status(connection_info);
+            status_label->set_text(connection_status);
+        }
+        else
+        {
+            std::cerr << "Error: Connection info or status label is null." << std::endl;
+        }
     }
 }
 
@@ -406,32 +393,3 @@ std::string MainWindow::get_connection_status(const std::string& connection_info
 {
     return "Connected"; // Placeholder for actual connection status check
 }
-
-// void MainWindow::update_datasource_connection_status(const std::string& connection_info, const std::string& status_text)
-// {
-//     for (auto* child : m_dataset_sources_lbox->get_children())
-//     {
-//         auto* row = dynamic_cast<Gtk::ListBoxRow*>(child);
-//         if (!row) continue;
-
-//         auto* grid = dynamic_cast<Gtk::Grid*>(row->get_child());
-//         if (!grid) continue;
-
-//         // Get the Connection Info label (assumed to be in column 3)
-//         auto* connection_info_label = dynamic_cast<Gtk::Label*>(grid->get_child_at(0, 3));
-//         if (!connection_info_label) continue;
-
-//         if (connection_info_label->get_text() == connection_info)
-//         {
-//             // Get the Connection Status label (assumed to be in column 4)
-//             auto* status_label = dynamic_cast<Gtk::Label*>(grid->get_child_at(0, 4));
-            
-//             if (status_label)
-//             {
-//                 status_label->set_text(status_text);
-//             }
-//             break;
-//         }
-//     }
-// }
-

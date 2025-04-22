@@ -38,9 +38,7 @@ protected:
     
     // Dataset Explorer Stack
     Gtk::Button *m_dataset_sources_refresh_btn;
-    Gtk::ListBox *m_dataset_sources_lbox;
     Gtk::Grid *m_dataset_sources_grid;
-    Gtk::CheckButton *m_select_all_datasources_cbtn;
 
     void on_previous_clicked();
     void on_next_clicked();
@@ -51,6 +49,8 @@ private:
     int m_current_step = 0;
     std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training"};
     std::vector<Gtk::Label*> m_training_step_labels;
+    std::vector<Gtk::CheckButton*> m_datasources_checkboxes;
+    std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
 
     void set_window_title(const std::string &title);
     void on_menu_toggled();
@@ -58,9 +58,9 @@ private:
     void transition_step(bool step_forward);
     void write_model_readme();
     void refresh_dataset_sources();
-    void remove_dataset_sources_except_header();
+    void clear_dataset_sources();
     void add_dataset_sources_header();
-    void add_dataset_source_row(const std::string& name, const std::string& type, const std::string& connection_info, bool checked = true, const std::string& connection_status = "Unknown");
+    void add_dataset_source_row(size_t row_index, const std::string& name, const std::string& type, const std::string& connection_info, bool checked = true, const std::string& connection_status = "Unknown");
     void update_all_datasource_connection_status();
     std::string get_connection_status(const std::string& connection_info);
 };
