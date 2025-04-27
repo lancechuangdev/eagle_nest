@@ -5,6 +5,18 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 
+namespace fs = std::filesystem;
+using DatasetSource = MainWindow::DatasetSource;
+using json = nlohmann::json;
+
+static bool is_image_file(const fs::path& p)
+{
+    static const std::set<std::string> exts = {".png", ".jpg", ".jpeg", ".bmp"};
+    auto ext = p.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    return exts.count(ext) > 0;
+}
+
 MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &refBuilder)
     : Gtk::Window(obj),
       m_builder(refBuilder)
@@ -77,6 +89,26 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         
     update_step_indicator();
 
+    m_builder->get_widget("explorer_stack", m_explorer_stack);
+
+    m_builder->get_widget("explorer_dataset_sources_rbtn", m_explorer_dataset_sources_rbtn);
+    if (m_explorer_dataset_sources_rbtn)
+    {
+        m_explorer_dataset_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
+    m_builder->get_widget("explorer_images_from_sources_rbtn", m_explorer_images_from_sources_rbtn);
+    if (m_explorer_images_from_sources_rbtn)
+    {
+        m_explorer_images_from_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
+    m_builder->get_widget("explorer_training_images_rbtn", m_explorer_training_images_rbtn);
+    if (m_explorer_training_images_rbtn)
+    {
+        m_explorer_training_images_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
     m_builder->get_widget("dataset_sources_refresh_btn", m_dataset_sources_refresh_btn);
     if (m_dataset_sources_refresh_btn)
     {
@@ -85,6 +117,32 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
 
     m_builder->get_widget("dataset_sources_grid", m_dataset_sources_grid);
     add_dataset_sources_header();
+
+    m_builder->get_widget("dataset_sources_cbox", m_dataset_sources_cbox);
+    m_dataset_sources_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_source_changed));
+
+    m_builder->get_widget("image_category_cbox", m_image_category_cbox);
+
+    m_builder->get_widget("images_from_sources_refresh_btn", m_images_from_sources_refresh_btn);
+    if (m_images_from_sources_refresh_btn)
+    {
+        m_images_from_sources_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_images_from_sources_refresh_clicked));
+    }
+
+    m_builder->get_widget("explorer_images_lbox", m_explorer_images_lbox);
+    // Handle row selection
+    m_explorer_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                // on_img_row_clicked(image_path);
+                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+            }
+        }
+    });
 }
 
 MainWindow::~MainWindow()
@@ -228,6 +286,41 @@ void MainWindow::write_model_readme()
     out << std::setw(4) << readme_json << std::endl;
 }
 
+void MainWindow::on_explorer_toggled()
+{
+    if (m_explorer_dataset_sources_rbtn->get_active())
+    {
+        m_explorer_stack->set_visible_child("page_dataset_souces");
+    }
+    else if (m_explorer_images_from_sources_rbtn->get_active())
+    {
+        m_explorer_stack->set_visible_child("page_images_from_sources");
+    }
+    else if (m_explorer_training_images_rbtn->get_active())
+    {
+        m_explorer_stack->set_visible_child("page_training_images");
+    }
+    else
+    {
+        std::cerr << "No valid option selected." << std::endl;
+    }
+}
+
+void MainWindow::on_dataset_source_changed()
+{
+    auto id = m_dataset_sources_cbox->get_active_id();
+
+    if (id == "separator")
+    {
+        // Ignore separator selection
+        m_dataset_sources_cbox->set_active(-1);
+        return;
+    }
+
+    // Handle valid selection
+    std::cout << "Selected ID: " << id << std::endl;
+}
+
 void MainWindow::on_dataset_sources_refresh_clicked()
 {
     // Disable the button to prevent multiple clicks
@@ -235,23 +328,106 @@ void MainWindow::on_dataset_sources_refresh_clicked()
 
     // Launch detection in a separate thread
     std::thread([this]() {
+        discover_dataset_sources();
 
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this]() {
-            refresh_dataset_sources();
+            clear_dataset_sources();
+            add_dataset_sources_header();
+            for (const auto& [id, name, type, path, status] : m_dataset_sources)
+            {
+                if (id <= 0)
+                {
+                    std::cerr << "Row index must be non-negative." << std::endl;
+                    continue;
+                }
+
+                // Add each dataset source to the grid
+                add_dataset_source_row(id, name, type, path, status);
+            }
+            
             m_dataset_sources_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
 }
 
-void MainWindow::refresh_dataset_sources()
+void MainWindow::discover_dataset_sources()
 {
-    clear_dataset_sources();
-    add_dataset_sources_header();
-    add_dataset_source_row(1, "Local Datasets", "Local", "~/eagle_eye/detection_projects");
-    add_dataset_source_row(2, "USB Datasets", "USB", "/path/to/usb");
-    add_dataset_source_row(3, "Remote Datasets", "Network", "192.168.1.2");
-    update_all_datasource_connection_status();
+    size_t datasource_id = 1; // Starting ID for dataset sources
+
+    // Clear previous dataset sources
+    m_dataset_sources.clear();
+
+    // look for datasets in the following locations:
+    // 1. Local Datasets
+    // 2. USB Datasets (future)
+    // 3. Remote Datasets (future)
+
+    // Local Datasets
+    add_local_dataset_source(datasource_id++);
+
+    // sources.emplace_back(DatasetSource{
+    //     2,
+    //     "USB Datasets",
+    //     "USB",
+    //     "/path/to/usb",
+    //     "Connected"
+    // });
+
+    // sources.emplace_back(DatasetSource{
+    //     3,
+    //     "Remote Datasets",
+    //     "Network",
+    //     "192.168.1.2",
+    //     "Connected"
+    // });
+}
+
+void MainWindow::add_local_dataset_source(size_t datasource_display_id)
+{
+    auto base_path = AppPaths::Detection_Projects_Path;
+    bool is_local_datasets_found = false;
+
+    if (!fs::exists(base_path))
+    {
+        std::cerr << "Detection Projects path does not exist: " << base_path << std::endl;
+        return;
+    }
+
+    for (const auto& entry : fs::directory_iterator(base_path))
+    {
+        if (entry.is_directory())
+        {
+            auto dataset_path = entry.path() / "dataset";
+            auto project_name = entry.path().filename().string();
+            if (fs::exists(dataset_path))
+            {
+                is_local_datasets_found = true;
+                m_dataset_sources.emplace_back(DatasetSource{
+                    -1, // should not appear in the UI
+                    project_name,
+                    "Local",
+                    dataset_path.string(),
+                    "Connected"
+                });
+            }
+        }
+    }
+
+    if (is_local_datasets_found)
+    {
+        m_dataset_sources.emplace_back(DatasetSource{
+            datasource_display_id,
+            "Local Datasets",
+            "Local",
+            base_path.string(),
+            "Connected"
+        });
+    }
+    else
+    {
+        std::cout << "No local datasets found in: " << base_path << std::endl;
+    }
 }
 
 void MainWindow::add_dataset_sources_header()
@@ -326,11 +502,9 @@ void MainWindow::add_dataset_source_row(size_t row_index,
     const std::string& name,
     const std::string& type,
     const std::string& connection_info,
-    bool checked,
-    const std::string& connection_status)
+    const std::string& connection_status,
+    bool checked)
 {
-    int row = row_index;
-
     // Checkbox
     auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
     m_datasources_checkboxes.push_back(checkbox);
@@ -342,54 +516,284 @@ void MainWindow::add_dataset_source_row(size_t row_index,
     
         // Optionally update your internal state here
     });
-    m_dataset_sources_grid->attach(*checkbox, 0, row, 1, 1);
+    m_dataset_sources_grid->attach(*checkbox, 0, row_index, 1, 1);
 
     // Name label
     auto name_label = Gtk::make_managed<Gtk::Label>(name);
     name_label->set_halign(Gtk::Align::ALIGN_START);
-    m_dataset_sources_grid->attach(*name_label, 1, row, 1, 1);
+    m_dataset_sources_grid->attach(*name_label, 1, row_index, 1, 1);
 
     // Type label
     auto type_label = Gtk::make_managed<Gtk::Label>(type);
     type_label->set_halign(Gtk::Align::ALIGN_START);
-    m_dataset_sources_grid->attach(*type_label, 2, row, 1, 1);
+    m_dataset_sources_grid->attach(*type_label, 2, row_index, 1, 1);
 
     // Connection Info label
     auto info_label = Gtk::make_managed<Gtk::Label>(connection_info);
     info_label->set_halign(Gtk::Align::ALIGN_START);
     info_label->set_hexpand(true);
-    m_dataset_sources_grid->attach(*info_label, 3, row, 1, 1);
+    m_dataset_sources_grid->attach(*info_label, 3, row_index, 1, 1);
 
     // Connection Status label
-    auto status_label = Gtk::make_managed<Gtk::Label>("Unknown");
+    auto status_label = Gtk::make_managed<Gtk::Label>(connection_status);
     status_label->set_halign(Gtk::Align::ALIGN_START);
-    m_dataset_sources_grid->attach(*status_label, 4, row, 1, 1);
+    m_dataset_sources_grid->attach(*status_label, 4, row_index, 1, 1);
 
     // Store the connection info and status for later use
+    m_connection_status_labels.emplace_back(status_label);
     m_datasources_connections.emplace_back(info_label, status_label);
 
     m_dataset_sources_grid->show_all_children();
 }
 
-
-void MainWindow::update_all_datasource_connection_status()
+void MainWindow::on_images_from_sources_refresh_clicked()
 {
-    for (const auto& [info_label, status_label] : m_datasources_connections) 
+    // Disable the button to prevent multiple clicks
+    m_images_from_sources_refresh_btn->set_sensitive(false);
+
+    refresh_dataset_sources_options();
+    refresh_image_category_options();
+
+    // Launch detection in a separate thread
+    std::thread([this]() {
+        std::vector<fs::path> images;
+        // Create a JSON object to store the image info
+        json image_info_json;
+
+        try
+        {
+            for (const auto& source : m_dataset_sources)
+            {
+                // Skip the data source that only for display purpose.
+                if (source.dispaly_index >= 0)
+                {
+                    continue;
+                }
+        
+                auto normal_dataset_path = fs::path(source.connection_info) / "normal";
+                auto abnormal_dataset_path = fs::path(source.connection_info) / "abnormal";
+
+                if (fs::exists(normal_dataset_path))
+                {
+                    for (auto const& dir_entry :
+                         fs::recursive_directory_iterator(normal_dataset_path))
+                    {
+                        if (dir_entry.is_regular_file() &&
+                            is_image_file(dir_entry.path()))
+                        {
+                            images.emplace_back(dir_entry.path());
+
+                            json image_entry;
+                            image_entry["file_path"] = dir_entry.path().string();
+                            image_entry["source_name"] = source.name;
+                            image_entry["source_type"] = source.type;
+                            
+                            // Add the image entry to the JSON array
+                            image_info_json.push_back(image_entry);
+                        }
+                    }
+                }
+
+                if (fs::exists(abnormal_dataset_path))
+                {
+                    for (auto const& dir_entry :
+                         fs::recursive_directory_iterator(abnormal_dataset_path))
+                    {
+                        if (dir_entry.is_regular_file() &&
+                            is_image_file(dir_entry.path()))
+                        {
+                            images.emplace_back(dir_entry.path());
+
+                            json image_entry;
+                            image_entry["file_path"] = dir_entry.path().string();
+                            image_entry["source_name"] = source.name;
+                            image_entry["source_type"] = source.type;
+                            
+                            // Add the image entry to the JSON array
+                            image_info_json.push_back(image_entry);
+                        }
+                    }
+                }
+            }
+
+            // Open the file to write the JSON object
+            auto json_file_path = AppPaths::Dataset_Images_Path / "dataset.json";
+            std::ofstream json_file(json_file_path);
+            if (json_file.is_open())
+            {
+                json_file << std::setw(4) << image_info_json << std::endl; // Pretty print with indentations
+                json_file.close();
+                std::cout << "Image info written to " << json_file_path << std::endl;
+            }
+            else
+            {
+                std::cerr << "Failed to open file: " << json_file_path << std::endl;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error while scanning images: " << e.what() << '\n';
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, imgs = std::move(images)]() {
+            populate_explorer_images_listbox(imgs);
+            m_images_from_sources_refresh_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::refresh_dataset_sources_options()
+{
+    // Clear the existing options
+    m_dataset_sources_cbox->remove_all();
+
+    // Add the "All" option at the top
+    m_dataset_sources_cbox->append("all", "All Connected Sources");
+
+    // Add new options
+    for (const auto& source : m_dataset_sources)
     {
-        if (info_label && status_label)
+        // Skip the data source that should not be displayed in the UI.
+        if (source.dispaly_index <= 0)
         {
-            auto connection_info = info_label->get_text();
-            auto connection_status = get_connection_status(connection_info);
-            status_label->set_text(connection_status);
+            continue;
         }
-        else
+
+        // Add the dataset source to the combo box
+        m_dataset_sources_cbox->append(source.name, source.name);
+    }
+
+    // Add a separator, not a real option.
+    m_dataset_sources_cbox->append("separator", "──────────────────");
+
+    // Add the "Training Set" option at the bottom
+    m_dataset_sources_cbox->append("training", "Training Set");
+
+    // Set the first option as active
+    m_dataset_sources_cbox->set_active(0);
+
+    // Show the updated options
+    m_dataset_sources_cbox->show();
+}
+
+void MainWindow::refresh_image_category_options()
+{
+    // Clear the existing options
+    m_image_category_cbox->remove_all();
+
+    // Add all options
+    m_image_category_cbox->append("All");
+    m_image_category_cbox->append("Normal");
+    m_image_category_cbox->append("Abnormal");
+
+    // Set the first option as active
+    m_image_category_cbox->set_active(0);
+    
+    // Show the updated options
+    m_image_category_cbox->show();
+}
+
+void MainWindow::populate_explorer_images_listbox(const std::vector<fs::path>& images)
+{
+    // clear previous rows
+    for (auto* child : m_explorer_images_lbox->get_children())
+    m_explorer_images_lbox->remove(*child);
+
+    // add one row per image
+    for (const auto& p : images)
+    {
+        auto filename = p.filename().string();
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        // Label for the image
+        auto lbl  = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40); // You can tweak this as needed
+        lbl->set_single_line_mode(true); // Prevent wrapping
+
+        // Action button
+        auto btn = Gtk::make_managed<Gtk::Button>("Add");
+        btn->set_valign(Gtk::ALIGN_CENTER);
+        btn->signal_clicked().connect([this, btn, p]()
         {
-            std::cerr << "Error: Connection info or status label is null." << std::endl;
+            if (btn->get_label() == "Add")
+            {
+                on_img_add_clicked(p);
+                btn->set_label("Remove");
+            }
+            else if (btn->get_label() == "Remove")
+            {
+                on_img_remove_clicked(p);
+                btn->set_label("Add");
+            }
+        });
+
+        // Pack them into the hbox
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+
+        // Add the hbox to a row
+        auto row  = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*hbox);
+
+        // Store the path as custom data
+        row->set_data("image_path", new fs::path(p));
+
+        // Add the row to the listbox
+        m_explorer_images_lbox->append(*row);
+    }
+    m_explorer_images_lbox->show_all_children();
+}
+
+void MainWindow::on_img_add_clicked(const fs::path& image_path)
+{
+    // Do something with the path
+    std::cout << "Add button clicked for: " << image_path.string() << std::endl;
+    add_image_to_dataset(image_path, "normal");
+}
+
+void MainWindow::on_img_remove_clicked(const fs::path& image_path)
+{
+    // Do something with the path
+    std::cout << "Remove button clicked for: " << image_path.string() << std::endl;
+    remove_image_from_dataset(image_path, "normal");
+}
+
+void MainWindow::add_image_to_dataset(const fs::path& src_path, const std::string& category)
+{
+    try
+    {
+        auto dataset_path = AppPaths::Dataset_Images_Path / category;
+        if (!fs::exists(dataset_path))
+        {
+            fs::create_directories(dataset_path);
         }
+
+        auto dest_path = dataset_path / src_path.filename();
+        fs::copy(src_path, dest_path, fs::copy_options::overwrite_existing);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "Failed to add image: " << ex.what() << std::endl;
     }
 }
 
-std::string MainWindow::get_connection_status(const std::string& connection_info)
+void MainWindow::remove_image_from_dataset(const fs::path& src_path, const std::string& category)
 {
-    return "Connected"; // Placeholder for actual connection status check
+    try
+    {
+        auto dataset_path = AppPaths::Dataset_Images_Path / category;
+        auto dest_path = dataset_path / src_path.filename();
+        if (fs::exists(dest_path))
+        {
+            fs::remove(dest_path);
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "Failed to remove image: " << ex.what() << std::endl;
+    }
 }

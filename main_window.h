@@ -2,10 +2,22 @@
 #define EAGLE_EYE_MAIN_WINDOW_H
 
 #include <gtkmm.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 class MainWindow : public Gtk::Window
 {
 public:
+    struct DatasetSource {
+        // Index of the row in the UI grid, starting from 1 (excluding header row).
+        // Set to -1 if the dataset should not be displayed in the UI.
+        int dispaly_index;
+        std::string name;
+        std::string type;
+        std::string connection_info;
+        std::string connection_status;
+    };
     MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &refBuilder);
     virtual ~MainWindow();
 
@@ -37,8 +49,16 @@ protected:
     Gtk::LinkButton *m_confirm_dataset_lbtn;
     
     // Dataset Explorer Stack
+    Gtk::Stack *m_explorer_stack;
+    Gtk::RadioButton *m_explorer_dataset_sources_rbtn;
+    Gtk::RadioButton *m_explorer_images_from_sources_rbtn;
+    Gtk::RadioButton *m_explorer_training_images_rbtn;
     Gtk::Button *m_dataset_sources_refresh_btn;
     Gtk::Grid *m_dataset_sources_grid;
+    Gtk::ComboBoxText *m_dataset_sources_cbox;
+    Gtk::ComboBoxText *m_image_category_cbox;
+    Gtk::Button *m_images_from_sources_refresh_btn;
+    Gtk::ListBox *m_explorer_images_lbox;
 
     void on_previous_clicked();
     void on_next_clicked();
@@ -51,18 +71,29 @@ private:
     std::vector<Gtk::Label*> m_training_step_labels;
     std::vector<Gtk::CheckButton*> m_datasources_checkboxes;
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
+    std::vector<Gtk::Label*> m_connection_status_labels;
+    std::vector<DatasetSource> m_dataset_sources;
 
     void set_window_title(const std::string &title);
     void on_menu_toggled();
     void update_step_indicator();
     void transition_step(bool step_forward);
     void write_model_readme();
-    void refresh_dataset_sources();
+    void on_explorer_toggled();
+    void discover_dataset_sources();
+    void add_local_dataset_source(size_t datasource_id);
     void clear_dataset_sources();
     void add_dataset_sources_header();
-    void add_dataset_source_row(size_t row_index, const std::string& name, const std::string& type, const std::string& connection_info, bool checked = true, const std::string& connection_status = "Unknown");
-    void update_all_datasource_connection_status();
-    std::string get_connection_status(const std::string& connection_info);
+    void add_dataset_source_row(size_t row_index, const std::string& name, const std::string& type, const std::string& connection_info, const std::string& connection_status, bool checked = true);
+    void on_dataset_source_changed();
+    void on_images_from_sources_refresh_clicked();
+    void refresh_dataset_sources_options();
+    void refresh_image_category_options();
+    void populate_explorer_images_listbox(const std::vector<fs::path>& images);
+    void on_img_add_clicked(const fs::path& image_path);
+    void on_img_remove_clicked(const fs::path& image_path);
+    void add_image_to_dataset(const fs::path& src_path, const std::string& category);
+    void remove_image_from_dataset(const fs::path& src_path, const std::string& category);
 };
 
 #endif
