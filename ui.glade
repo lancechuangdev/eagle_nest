@@ -879,7 +879,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkDrawingArea">
+                                  <object class="GtkDrawingArea" id="explorer_image_drawing_area">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                   </object>
@@ -948,6 +948,8 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                           <object class="GtkScrolledWindow">
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
+                            <property name="margin-top">5</property>
+                            <property name="margin-bottom">5</property>
                             <property name="vexpand">True</property>
                             <property name="shadow-type">in</property>
                             <child>

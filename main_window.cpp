@@ -139,10 +139,14 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             {
                 const fs::path& image_path = *path_ptr;
                 // on_img_row_clicked(image_path);
+                load_image_to_explorer(image_path);
                 std::cout << "Row activated for image: " << image_path.string() << std::endl;
             }
         }
     });
+
+    m_builder->get_widget("explorer_image_drawing_area", m_explorer_image_drawing_area);
+    m_explorer_image_drawing_area->signal_draw().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_image_draw));
 }
 
 MainWindow::~MainWindow()
@@ -842,4 +846,41 @@ void MainWindow::remove_image_from_dataset(const fs::path& src_path, const std::
     {
         std::cerr << "Failed to remove image: " << ex.what() << std::endl;
     }
+}
+
+void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path)
+{
+    try
+    {
+        m_loaded_explorer_image_pixbuf = Gdk::Pixbuf::create_from_file(image_path.string());
+        m_explorer_image_drawing_area->queue_draw(); // force redraw
+    }
+    catch (const Glib::Error& ex)
+    {
+        std::cerr << "Failed to load image: " << ex.what() << std::endl;
+    }
+}
+
+bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr)
+{
+    if (m_loaded_explorer_image_pixbuf)
+    {
+        // Scale the image to fit the drawing area
+        auto allocation = m_explorer_image_drawing_area->get_allocation();
+        int area_width = allocation.get_width();
+        int area_height = allocation.get_height();
+
+        // Calculate scale ratio
+        double scale_x = static_cast<double>(area_width) / m_loaded_explorer_image_pixbuf->get_width();
+        double scale_y = static_cast<double>(area_height) / m_loaded_explorer_image_pixbuf->get_height();
+        double scale = std::min(scale_x, scale_y);
+
+        cr->save();
+        cr->scale(scale, scale);
+        Gdk::Cairo::set_source_pixbuf(cr, m_loaded_explorer_image_pixbuf, 0, 0);
+        cr->paint();
+        cr->restore();
+    }
+
+    return true;
 }

@@ -59,6 +59,7 @@ protected:
     Gtk::ComboBoxText *m_image_category_cbox;
     Gtk::Button *m_images_from_sources_refresh_btn;
     Gtk::ListBox *m_explorer_images_lbox;
+    Gtk::DrawingArea *m_explorer_image_drawing_area;
 
     void on_previous_clicked();
     void on_next_clicked();
@@ -66,7 +67,7 @@ protected:
 
 private:
     struct ImageInfo {
-        std::filesystem::path file_path;
+        fs::path file_path;
         std::string source_name;
         std::string source_type;
     };
@@ -79,6 +80,7 @@ private:
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
     std::vector<Gtk::Label*> m_connection_status_labels;
     std::vector<DatasetSource> m_dataset_sources;
+    Glib::RefPtr<Gdk::Pixbuf> m_loaded_explorer_image_pixbuf;
 
     void set_window_title(const std::string &title);
     void on_menu_toggled();
@@ -100,6 +102,8 @@ private:
     void on_img_remove_clicked(const ImageInfo& image_info);
     void add_image_to_dataset(const fs::path& src_path, const std::string& category);
     void remove_image_from_dataset(const fs::path& src_path, const std::string& category);
+    void load_image_to_explorer(const std::filesystem::path& image_path);
+    bool on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr);
 };
 
 #endif
