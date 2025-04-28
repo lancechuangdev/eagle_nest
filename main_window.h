@@ -65,6 +65,12 @@ protected:
     void on_dataset_sources_refresh_clicked();
 
 private:
+    struct ImageInfo {
+        std::filesystem::path file_path;
+        std::string source_name;
+        std::string source_type;
+    };
+
     Glib::RefPtr<Gtk::Builder> m_builder;
     int m_current_step = 0;
     std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training"};
@@ -89,9 +95,9 @@ private:
     void on_images_from_sources_refresh_clicked();
     void refresh_dataset_sources_options();
     void refresh_image_category_options();
-    void populate_explorer_images_listbox(const std::vector<fs::path>& images);
-    void on_img_add_clicked(const fs::path& image_path);
-    void on_img_remove_clicked(const fs::path& image_path);
+    void populate_explorer_images_listbox(const std::vector<ImageInfo>& images);
+    void on_img_add_clicked(const ImageInfo& image_info);
+    void on_img_remove_clicked(const ImageInfo& image_info);
     void add_image_to_dataset(const fs::path& src_path, const std::string& category);
     void remove_image_from_dataset(const fs::path& src_path, const std::string& category);
 };

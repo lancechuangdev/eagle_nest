@@ -556,9 +556,7 @@ void MainWindow::on_images_from_sources_refresh_clicked()
 
     // Launch detection in a separate thread
     std::thread([this]() {
-        std::vector<fs::path> images;
-        // Create a JSON object to store the image info
-        json image_info_json;
+        std::vector<ImageInfo> images_from_sources;
 
         try
         {
@@ -581,15 +579,11 @@ void MainWindow::on_images_from_sources_refresh_clicked()
                         if (dir_entry.is_regular_file() &&
                             is_image_file(dir_entry.path()))
                         {
-                            images.emplace_back(dir_entry.path());
-
-                            json image_entry;
-                            image_entry["file_path"] = dir_entry.path().string();
-                            image_entry["source_name"] = source.name;
-                            image_entry["source_type"] = source.type;
-                            
-                            // Add the image entry to the JSON array
-                            image_info_json.push_back(image_entry);
+                            images_from_sources.emplace_back(ImageInfo{
+                                dir_entry.path(),
+                                source.name,
+                                source.type
+                            });
                         }
                     }
                 }
@@ -602,32 +596,14 @@ void MainWindow::on_images_from_sources_refresh_clicked()
                         if (dir_entry.is_regular_file() &&
                             is_image_file(dir_entry.path()))
                         {
-                            images.emplace_back(dir_entry.path());
-
-                            json image_entry;
-                            image_entry["file_path"] = dir_entry.path().string();
-                            image_entry["source_name"] = source.name;
-                            image_entry["source_type"] = source.type;
-                            
-                            // Add the image entry to the JSON array
-                            image_info_json.push_back(image_entry);
+                            images_from_sources.emplace_back(ImageInfo{
+                                dir_entry.path().string(),
+                                source.name,
+                                source.type
+                            });
                         }
                     }
                 }
-            }
-
-            // Open the file to write the JSON object
-            auto json_file_path = AppPaths::Dataset_Images_Path / "dataset.json";
-            std::ofstream json_file(json_file_path);
-            if (json_file.is_open())
-            {
-                json_file << std::setw(4) << image_info_json << std::endl; // Pretty print with indentations
-                json_file.close();
-                std::cout << "Image info written to " << json_file_path << std::endl;
-            }
-            else
-            {
-                std::cerr << "Failed to open file: " << json_file_path << std::endl;
             }
         }
         catch (const std::exception& e)
@@ -636,7 +612,7 @@ void MainWindow::on_images_from_sources_refresh_clicked()
         }
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, imgs = std::move(images)]() {
+        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_sources)]() {
             populate_explorer_images_listbox(imgs);
             m_images_from_sources_refresh_btn->set_sensitive(true);
         });
@@ -694,20 +670,20 @@ void MainWindow::refresh_image_category_options()
     m_image_category_cbox->show();
 }
 
-void MainWindow::populate_explorer_images_listbox(const std::vector<fs::path>& images)
+void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& images)
 {
     // clear previous rows
     for (auto* child : m_explorer_images_lbox->get_children())
     m_explorer_images_lbox->remove(*child);
 
     // add one row per image
-    for (const auto& p : images)
+    for (const auto& info : images)
     {
-        auto filename = p.filename().string();
+        auto filename = info.file_path.filename().string();
         auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
 
         // Label for the image
-        auto lbl  = Gtk::make_managed<Gtk::Label>(filename);
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
         lbl->set_xalign(0);
         lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
         lbl->set_tooltip_text(filename);
@@ -717,16 +693,16 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<fs::path>& i
         // Action button
         auto btn = Gtk::make_managed<Gtk::Button>("Add");
         btn->set_valign(Gtk::ALIGN_CENTER);
-        btn->signal_clicked().connect([this, btn, p]()
+        btn->signal_clicked().connect([this, btn, info]()
         {
             if (btn->get_label() == "Add")
             {
-                on_img_add_clicked(p);
+                on_img_add_clicked(info);
                 btn->set_label("Remove");
             }
             else if (btn->get_label() == "Remove")
             {
-                on_img_remove_clicked(p);
+                on_img_remove_clicked(info);
                 btn->set_label("Add");
             }
         });
@@ -740,7 +716,7 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<fs::path>& i
         row->add(*hbox);
 
         // Store the path as custom data
-        row->set_data("image_path", new fs::path(p));
+        row->set_data("image_path", new fs::path(info.file_path));
 
         // Add the row to the listbox
         m_explorer_images_lbox->append(*row);
@@ -748,18 +724,88 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<fs::path>& i
     m_explorer_images_lbox->show_all_children();
 }
 
-void MainWindow::on_img_add_clicked(const fs::path& image_path)
+void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
 {
-    // Do something with the path
-    std::cout << "Add button clicked for: " << image_path.string() << std::endl;
-    add_image_to_dataset(image_path, "normal");
+    std::cout << "Add button clicked for: " << image_info.file_path.string() << std::endl;
+    add_image_to_dataset(image_info.file_path, "normal");
+
+    // Create a JSON entry
+    json image_entry;
+    image_entry["file_path"] = image_info.file_path.string();
+    image_entry["source_name"] = image_info.source_name;
+    image_entry["source_type"] = image_info.source_type;
+
+    // Path to the JSON file
+    auto dataset_json = AppPaths::Dataset_Images_Path / "dataset.json";
+
+    // Load existing JSON array (if file exists)
+    json images_json = json::array();
+    if (std::ifstream ifs{dataset_json})
+    {
+        try
+        {
+            ifs >> images_json;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to parse existing JSON, resetting: " << e.what() << std::endl;
+            images_json = json::array(); // fallback
+        }
+    }
+
+    // Add the new entry
+    images_json.push_back(image_entry);
+
+    // Save updated JSON back
+    std::ofstream ofs(dataset_json);
+    if (ofs)
+    {
+        ofs << images_json.dump(4); // pretty-print with indent of 4
+    }
+    else
+    {
+        std::cerr << "Failed to open " << dataset_json << " for writing" << std::endl;
+    }
 }
 
-void MainWindow::on_img_remove_clicked(const fs::path& image_path)
+void MainWindow::on_img_remove_clicked(const ImageInfo& image_info)
 {
-    // Do something with the path
-    std::cout << "Remove button clicked for: " << image_path.string() << std::endl;
-    remove_image_from_dataset(image_path, "normal");
+    std::cout << "Remove button clicked for: " << image_info.file_path.string() << std::endl;
+    remove_image_from_dataset(image_info.file_path, "normal");
+
+    // Load existing JSON
+    auto dataset_json = AppPaths::Dataset_Images_Path / "dataset.json";
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json" << std::endl;
+        return;
+    }
+
+    json images_json;
+    ifs >> images_json;
+    ifs.close();
+
+    // Find and erase the entry matching file_path
+    auto it = std::remove_if(images_json.begin(), images_json.end(),
+        [&image_info](const json& entry) {
+            return entry.contains("file_path") &&
+                   entry["file_path"] == image_info.file_path.string();
+        });
+
+    if (it != images_json.end())
+    {
+        images_json.erase(it, images_json.end());
+
+        // --- Save updated JSON back to file
+        std::ofstream ofs(dataset_json);
+        ofs << images_json.dump(4); // pretty-print with indent 4
+        ofs.close();
+    }
+    else
+    {
+        std::cout << "No matching entry found to remove." << std::endl;
+    }
 }
 
 void MainWindow::add_image_to_dataset(const fs::path& src_path, const std::string& category)
