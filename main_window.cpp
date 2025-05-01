@@ -4,6 +4,7 @@
 #include <thread>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <random>
 
 namespace fs = std::filesystem;
 using DatasetSource = MainWindow::DatasetSource;
@@ -43,6 +44,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
 
     m_builder->get_widget("content_stack", m_content_stack);
 
+    m_builder->get_widget("start_train_model_btn", m_start_train_model_btn);
+    if (m_start_train_model_btn)
+    {
+        m_start_train_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_start_train_model_clicked));
+    }
+
     m_builder->get_widget("training_stack", m_training_stack);
 
     m_builder->get_widget("previous_btn", m_previous_btn);
@@ -55,6 +62,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     if (m_next_btn)
     {
         m_next_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_next_clicked));
+    }
+
+    m_builder->get_widget("close_training_wizard_btn", m_close_training_wizard_btn);
+    if (m_close_training_wizard_btn)
+    {
+        m_close_training_wizard_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_close_training_wizard_clicked));
     }
 
     m_builder->get_widget("training_step1_lbl", m_training_step1_lbl);
@@ -89,18 +102,30 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         
     update_step_indicator();
 
+    m_builder->get_widget("training_wizard_img_included_cbox", m_training_wizard_img_included_cbox);
+
+    m_builder->get_widget("training_wizard_img_category_cbox", m_training_wizard_img_category_cbox);
+
+    m_builder->get_widget("training_wizard_image_refresh_btn", m_training_wizard_image_refresh_btn);
+    if (m_training_wizard_image_refresh_btn)
+    {
+        m_training_wizard_image_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_training_wizard_image_refresh_clicked));
+    }
+
+    m_builder->get_widget("training_wizard_images_lbox", m_training_wizard_images_lbox);
+
+    m_builder->get_widget("train_model_btn", m_train_model_btn);
+    if (m_train_model_btn)
+    {
+        m_train_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_train_model_clicked));
+    }
+
     m_builder->get_widget("explorer_stack", m_explorer_stack);
 
     m_builder->get_widget("explorer_dataset_sources_rbtn", m_explorer_dataset_sources_rbtn);
     if (m_explorer_dataset_sources_rbtn)
     {
         m_explorer_dataset_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
-    }
-
-    m_builder->get_widget("explorer_images_from_sources_rbtn", m_explorer_images_from_sources_rbtn);
-    if (m_explorer_images_from_sources_rbtn)
-    {
-        m_explorer_images_from_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
     }
 
     m_builder->get_widget("explorer_training_images_rbtn", m_explorer_training_images_rbtn);
@@ -153,6 +178,25 @@ MainWindow::~MainWindow()
 {
 }
 
+
+bool MainWindow::on_key_press_event(GdkEventKey *key_event)
+{
+    if (key_event->keyval == GDK_KEY_Control_L || key_event->keyval == GDK_KEY_Control_R)
+    {
+        m_ctrl_pressed = true;
+    }
+    return Gtk::Window::on_key_press_event(key_event);
+}
+
+bool MainWindow::on_key_release_event(GdkEventKey *key_event)
+{
+    if (key_event->keyval == GDK_KEY_Control_L || key_event->keyval == GDK_KEY_Control_R)
+    {
+        m_ctrl_pressed = false;
+    }
+    return Gtk::Window::on_key_release_event(key_event);
+}
+
 void MainWindow::set_window_title(const std::string &title)
 {
     Gtk::Window *root;
@@ -164,7 +208,7 @@ void MainWindow::on_menu_toggled()
 {
     if (m_model_btn->get_active())
     {
-        m_content_stack->set_visible_child("page_model");
+        m_content_stack->set_visible_child(m_active_model_page);
     }
     else if (m_explore_btn->get_active())
     {
@@ -173,6 +217,30 @@ void MainWindow::on_menu_toggled()
     else if (m_toolkit_btn->get_active())
     {
         m_content_stack->set_visible_child("page_toolkit");
+    }
+}
+
+void MainWindow::on_start_train_model_clicked()
+{
+    m_active_model_page = "page_training_wizard";
+    m_content_stack->set_visible_child(m_active_model_page);
+    m_training_stack->set_visible_child("page_select_model");
+    m_current_step = 0;
+    m_previous_btn->set_sensitive(false);
+    m_next_btn->set_sensitive(true);
+    update_step_indicator();
+
+    // Create training WIP directory if it doesn't exist
+    if (!std::filesystem::exists(AppPaths::WIP_Path))
+    {
+        std::filesystem::create_directories(AppPaths::WIP_Path);
+    }
+    else // Clear the directory if it already exists
+    {
+        for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
+        {
+            std::filesystem::remove_all(entry.path());
+        }
     }
 }
 
@@ -204,6 +272,18 @@ void MainWindow::on_next_clicked()
     transition_step(true);
 }
 
+void MainWindow::on_close_training_wizard_clicked()
+{
+    // Clear the directory if it already exists
+    for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
+    {
+        std::filesystem::remove_all(entry.path());
+    }
+
+    m_active_model_page = "page_model_welcome";
+    m_content_stack->set_visible_child(m_active_model_page);
+}
+
 void MainWindow::update_step_indicator() {
     for (size_t i = 0; i < m_training_step_labels.size(); ++i) {
         auto current_step_name = m_training_step_labels[i]->get_text();
@@ -217,19 +297,6 @@ void MainWindow::transition_step(bool step_forward)
     {
         if (m_current_step == 1) // Step 0 to Step 1
         {
-            // Create training WIP directory if it doesn't exist
-            if (!std::filesystem::exists(AppPaths::Training_WIP_Path))
-            {
-                std::filesystem::create_directories(AppPaths::Training_WIP_Path);
-            }
-            else // Clear the directory if it already exists
-            {
-                for (const auto &entry : std::filesystem::directory_iterator(AppPaths::Training_WIP_Path))
-                {
-                    std::filesystem::remove_all(entry.path());
-                }
-            }
-
             write_model_readme();
         }
     }
@@ -286,8 +353,258 @@ void MainWindow::write_model_readme()
     readme_json["comment"] = comment;
     readme_json["created_at"] = ss.str();
 
-    std::ofstream out(AppPaths::Training_WIP_Path / "model.readme");
+    std::ofstream out(AppPaths::WIP_Path / "model.readme");
     out << std::setw(4) << readme_json << std::endl;
+}
+
+void MainWindow::on_training_wizard_image_refresh_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_training_wizard_image_refresh_btn->set_sensitive(false);
+
+    // Load images in a separate thread
+    std::thread([this]() {
+        std::vector<ImageInfo> images_from_training_set;
+        std::string selected_img_inclusion = m_training_wizard_img_included_cbox->get_active_text();
+        std::string selected_img_category = m_training_wizard_img_category_cbox->get_active_text();
+
+        try
+        {
+            auto dataset_dir = AppPaths::WIP_Dataset_Path;
+            auto dest_json = dataset_dir / "dataset.json";
+
+            // Ensure the dataset directory exists
+            if (!fs::exists(dataset_dir))
+            {
+                fs::create_directories(dataset_dir);
+            }
+
+            // If dest_json does not exist, copy it from the source
+            if (!fs::exists(dest_json))
+            {
+                auto source_json = AppPaths::Dataset_Path / "dataset.json";
+                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
+            }
+
+            // Load existing JSON from destination
+            std::ifstream ifs(dest_json);
+
+            if (!ifs)
+            {
+                std::cerr << "Failed to open dataset.json" << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    int64_t img_id = entry["img_id"];
+                    std::string src_img_path = entry["src_img_path"];
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string source_name = entry["source_name"];
+                    std::string source_type = entry["source_type"];
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+
+                    // Filter based on inclusion status
+                    if (selected_img_inclusion != "All" && selected_img_inclusion != inclusion)
+                        continue;
+
+                    // Filter based on category
+                    if (selected_img_category != "All" && selected_img_category != category)
+                        continue;
+                    
+                    images_from_training_set.emplace_back(ImageInfo {
+                        img_id,
+                        src_img_path,
+                        dest_img_path,
+                        source_name,
+                        source_type,
+                        category,
+                        inclusion
+                    });
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error while scanning images: " << e.what() << '\n';
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set)]() {
+            populate_training_wizard_images_listbox(imgs);
+            m_training_wizard_image_refresh_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::on_train_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_train_model_btn->set_sensitive(false);
+
+    // Load images in a separate thread
+    std::thread([this]() {
+        try
+        {
+            auto dataset_path = AppPaths::WIP_Dataset_Path;
+            auto normal_dataset_path = dataset_path / "normal";
+            auto abnormal_dataset_path = dataset_path / "abnormal";
+
+            if (fs::exists(normal_dataset_path)) {
+                // Remove all contents inside the dataset/normal directory
+                fs::remove_all(normal_dataset_path);
+            }
+
+            if (fs::exists(abnormal_dataset_path)) {
+                // Remove all contents inside the dataset/abnormal directory
+                fs::remove_all(abnormal_dataset_path);
+            }
+
+            // Recreate the dataset directory and its subdirectories
+            fs::create_directories(dataset_path / "normal");
+            fs::create_directories(dataset_path / "abnormal");
+
+            // Load existing JSON
+            auto dataset_json = dataset_path / "dataset.json";
+            if (!fs::exists(dataset_json))
+            {
+                std::cerr << "dataset.json does not exist" << std::endl;
+            }
+            else
+            {
+                std::ifstream ifs(dataset_json);
+                    
+                if (!ifs)
+                {
+                    std::cerr << "Failed to open " << dataset_json << std::endl;
+                }
+                else
+                {
+                    json images_json;
+                    ifs >> images_json;
+                    ifs.close();
+                    
+                    for (const auto& entry : images_json)
+                    {
+                        std::string dest_img_path = entry["dest_img_path"];
+                        std::string img_name = fs::path(dest_img_path).filename();
+                        std::string category = entry["category"];
+                        std::string inclusion = entry["inclusion"];
+
+                        // Filter based on inclusion status
+                        if (inclusion != "Included")
+                            continue;
+
+                        category[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category[0])));
+                        auto dataset_category_path = dataset_path / category;
+
+                        // Copy the image from training set to the WIP directory
+                        fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error while preparing training images: " << e.what() << '\n';
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_train_model_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images)
+{
+    // clear previous rows
+    for (auto* child : m_training_wizard_images_lbox->get_children())
+    {
+        m_training_wizard_images_lbox->remove(*child);
+    }
+
+    // add one row per image
+    for (const auto& info : images)
+    {
+        auto filename = info.dest_img_path.filename().string();
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        // Label for the image
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40); // Tweak this as needed
+        lbl->set_single_line_mode(true); // Prevent wrapping
+
+        // Action button
+        auto btn = Gtk::make_managed<Gtk::Button>(info.inclusion == "Included" ? "Remove" : "Add");
+        btn->set_valign(Gtk::ALIGN_CENTER);
+        btn->signal_clicked().connect([this, btn, info]()
+        {
+            if (btn->get_label() == "Add")
+            {
+                update_img_inclusion(info.img_id, "Included");
+                btn->set_label("Remove");
+            }
+            else if (btn->get_label() == "Remove")
+            {
+                update_img_inclusion(info.img_id, "Excluded");
+                btn->set_label("Add");
+            }
+        });
+
+        // Pack them into the hbox
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+
+        // Add the hbox to a row
+        auto row  = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*hbox);
+
+        // Store the path as custom data
+        row->set_data("image_path", new fs::path(info.dest_img_path));
+
+        // Add the row to the listbox
+        m_training_wizard_images_lbox->append(*row);
+    }
+    m_training_wizard_images_lbox->show_all_children();
+}
+
+void MainWindow::update_img_inclusion(const int64_t img_id, const std::string& inclusion)
+{
+    // Load existing JSON
+    auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json" << std::endl;
+        return;
+    }
+
+    json images_json;
+    ifs >> images_json;
+    ifs.close();
+
+    // Update the inclusion status
+    for (auto& entry : images_json)
+    {
+        if (entry["img_id"] == img_id)
+        {
+            entry["inclusion"] = inclusion;
+            break;
+        }
+    }
+
+    // Save the updated JSON
+    std::ofstream ofs(dataset_json);
+    ofs << std::setw(4) << images_json << std::endl;
 }
 
 void MainWindow::on_explorer_toggled()
@@ -295,10 +612,6 @@ void MainWindow::on_explorer_toggled()
     if (m_explorer_dataset_sources_rbtn->get_active())
     {
         m_explorer_stack->set_visible_child("page_dataset_souces");
-    }
-    else if (m_explorer_images_from_sources_rbtn->get_active())
-    {
-        m_explorer_stack->set_visible_child("page_images_from_sources");
     }
     else if (m_explorer_training_images_rbtn->get_active())
     {
@@ -350,6 +663,10 @@ void MainWindow::on_dataset_sources_refresh_clicked()
                 add_dataset_source_row(id, name, type, path, status);
             }
             
+            // Refresh the combo boxes
+            refresh_dataset_sources_options();
+            refresh_image_category_options();
+
             m_dataset_sources_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -555,56 +872,121 @@ void MainWindow::on_images_from_sources_refresh_clicked()
     // Disable the button to prevent multiple clicks
     m_images_from_sources_refresh_btn->set_sensitive(false);
 
-    refresh_dataset_sources_options();
-    refresh_image_category_options();
-
-    // Launch detection in a separate thread
+    // Load images in a separate thread
     std::thread([this]() {
         std::vector<ImageInfo> images_from_sources;
+        // Get selected data source name from combo box
+        std::string selected_source_name = m_dataset_sources_cbox->get_active_text();
+        std::string selected_img_category = m_image_category_cbox->get_active_text();
+        std::vector<DatasetSource> filtered_sources;
+        bool is_training_set = false;
 
         try
         {
-            for (const auto& source : m_dataset_sources)
+            if (selected_source_name == "Training Set")
             {
-                // Skip the data source that only for display purpose.
-                if (source.dispaly_index >= 0)
-                {
-                    continue;
-                }
-        
-                auto normal_dataset_path = fs::path(source.connection_info) / "normal";
-                auto abnormal_dataset_path = fs::path(source.connection_info) / "abnormal";
+                is_training_set = true;
 
-                if (fs::exists(normal_dataset_path))
+                // Load existing JSON
+                auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+                std::ifstream ifs(dataset_json);
+                if (!ifs)
                 {
-                    for (auto const& dir_entry :
-                         fs::recursive_directory_iterator(normal_dataset_path))
+                    std::cerr << "Failed to open dataset.json" << std::endl;
+                }
+                else
+                {
+                    json images_json;
+                    ifs >> images_json;
+                    ifs.close();
+                    
+                    for (const auto& entry : images_json)
                     {
-                        if (dir_entry.is_regular_file() &&
-                            is_image_file(dir_entry.path()))
+                        int64_t img_id = entry["img_id"];
+                        fs::path src_img_path = entry["src_img_path"];
+                        fs::path dest_img_path = entry["dest_img_path"];
+                        std::string source_name = entry["source_name"];
+                        std::string source_type = entry["source_type"];
+                        std::string category = entry["category"];
+                        
+                        if (selected_img_category != "All" && selected_img_category != category)
+                            continue;
+                        
+                        images_from_sources.emplace_back(ImageInfo{
+                            img_id,
+                            src_img_path,
+                            dest_img_path,
+                            source_name,
+                            source_type,
+                            category
+                        });
+                    }
+                }
+            }
+            else
+            {
+                for (const auto& source : m_dataset_sources)
+                {
+                    // Skip display-only sources
+                    if (source.dispaly_index >= 0)
+                        continue;
+            
+                    if (selected_source_name == "All Connected Sources")
+                    {
+                        // No filtering, accept all
+                        filtered_sources.push_back(source);
+                    }
+                    else if (selected_source_name == "Local Datasets")
+                    {
+                        if (source.type == "Local")
                         {
-                            images_from_sources.emplace_back(ImageInfo{
-                                dir_entry.path(),
-                                source.name,
-                                source.type
-                            });
+                            filtered_sources.push_back(source);
+                        }
+                    }
+                    else
+                    {
+                        // Otherwise match by exact name
+                        if (source.name == selected_source_name)
+                        {
+                            filtered_sources.push_back(source);
                         }
                     }
                 }
 
-                if (fs::exists(abnormal_dataset_path))
+                for (const auto& source : filtered_sources)
                 {
-                    for (auto const& dir_entry :
-                         fs::recursive_directory_iterator(abnormal_dataset_path))
+                    std::vector<fs::path> dataset_paths;
+
+                    if (selected_img_category == "All" || selected_img_category == "Normal")
                     {
-                        if (dir_entry.is_regular_file() &&
-                            is_image_file(dir_entry.path()))
+                        dataset_paths.push_back(fs::path(source.connection_info) / "normal");
+                    }
+                    if (selected_img_category == "All" || selected_img_category == "Abnormal")
+                    {
+                        dataset_paths.push_back(fs::path(source.connection_info) / "abnormal");
+                    }
+
+                    for (const auto& dataset_path : dataset_paths)
+                    {
+                        if (fs::exists(dataset_path))
                         {
-                            images_from_sources.emplace_back(ImageInfo{
-                                dir_entry.path().string(),
-                                source.name,
-                                source.type
-                            });
+                            for (const auto& dir_entry : fs::recursive_directory_iterator(dataset_path))
+                            {
+                                if (dir_entry.is_regular_file() && is_image_file(dir_entry.path()))
+                                {
+                                    int64_t img_id = 0; // Placeholder for image ID
+                                    fs::path src_img_path = dir_entry.path();
+                                    fs::path dest_img_path = dir_entry.path();
+                                    images_from_sources.emplace_back(ImageInfo{
+                                        img_id,
+                                        src_img_path,
+                                        dest_img_path,
+                                        source.name,
+                                        source.type,
+                                        selected_img_category
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -616,8 +998,8 @@ void MainWindow::on_images_from_sources_refresh_clicked()
         }
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_sources)]() {
-            populate_explorer_images_listbox(imgs);
+        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_sources), is_training_set]() {
+            populate_explorer_images_listbox(imgs, is_training_set);
             m_images_from_sources_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -674,16 +1056,34 @@ void MainWindow::refresh_image_category_options()
     m_image_category_cbox->show();
 }
 
-void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& images)
+void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& images, bool is_training_set)
 {
     // clear previous rows
     for (auto* child : m_explorer_images_lbox->get_children())
     m_explorer_images_lbox->remove(*child);
+    json images_json;
+
+    // Load existing dataset.json for later use
+    // If we are in the training set, we don't need to load the dataset.json
+    if (!is_training_set)
+    {
+        auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+        std::ifstream ifs(dataset_json);
+        if (!ifs)
+        {
+            std::cerr << "Failed to open dataset.json" << std::endl;
+        }
+        else
+        {
+            ifs >> images_json;
+            ifs.close();
+        }
+    }
 
     // add one row per image
     for (const auto& info : images)
     {
-        auto filename = info.file_path.filename().string();
+        auto filename = info.src_img_path.filename().string();
         auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
 
         // Label for the image
@@ -691,11 +1091,31 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& 
         lbl->set_xalign(0);
         lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
         lbl->set_tooltip_text(filename);
-        lbl->set_max_width_chars(40); // You can tweak this as needed
+        lbl->set_max_width_chars(40); // Tweak this as needed
         lbl->set_single_line_mode(true); // Prevent wrapping
 
+        // Check if the image is already in the dataset.json
+        bool is_in_dataset = false;
+        if (is_training_set)
+        {
+            is_in_dataset = true;
+        }
+        else
+        {
+            auto it = std::remove_if(images_json.begin(), images_json.end(),
+            [&info](const json& entry) {
+                return entry.contains("src_img_path") &&
+                    entry["src_img_path"] == info.src_img_path.string();
+            });
+            if (it != images_json.end())
+            {
+                is_in_dataset = true;
+            }
+        }
+
         // Action button
-        auto btn = Gtk::make_managed<Gtk::Button>("Add");
+        auto action_label = is_in_dataset ? "Remove" : "Add";
+        auto btn = Gtk::make_managed<Gtk::Button>(action_label);
         btn->set_valign(Gtk::ALIGN_CENTER);
         btn->signal_clicked().connect([this, btn, info]()
         {
@@ -720,7 +1140,7 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& 
         row->add(*hbox);
 
         // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.file_path));
+        row->set_data("image_path", new fs::path(info.src_img_path));
 
         // Add the row to the listbox
         m_explorer_images_lbox->append(*row);
@@ -730,17 +1150,22 @@ void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& 
 
 void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
 {
-    std::cout << "Add button clicked for: " << image_info.file_path.string() << std::endl;
-    add_image_to_dataset(image_info.file_path, "normal");
+    std::cout << "Add button clicked for: " << image_info.src_img_path.string() << std::endl;
+    std::string category = m_ctrl_pressed ? "Abnormal" : "Normal";
+    auto dest_img_path = add_image_to_dataset(image_info.src_img_path, category);
 
     // Create a JSON entry
     json image_entry;
-    image_entry["file_path"] = image_info.file_path.string();
+    image_entry["img_id"] = generate_img_id();
+    image_entry["src_img_path"] = image_info.src_img_path.string();
+    image_entry["dest_img_path"] = dest_img_path.string();
     image_entry["source_name"] = image_info.source_name;
     image_entry["source_type"] = image_info.source_type;
-
+    image_entry["category"] = category;
+    image_entry["inclusion"] = "Included";
+    
     // Path to the JSON file
-    auto dataset_json = AppPaths::Dataset_Images_Path / "dataset.json";
+    auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
 
     // Load existing JSON array (if file exists)
     json images_json = json::array();
@@ -774,11 +1199,11 @@ void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
 
 void MainWindow::on_img_remove_clicked(const ImageInfo& image_info)
 {
-    std::cout << "Remove button clicked for: " << image_info.file_path.string() << std::endl;
-    remove_image_from_dataset(image_info.file_path, "normal");
+    std::cout << "Remove button clicked for: " << image_info.dest_img_path.string() << std::endl;
+    remove_image_from_dataset(image_info.dest_img_path);
 
     // Load existing JSON
-    auto dataset_json = AppPaths::Dataset_Images_Path / "dataset.json";
+    auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
     std::ifstream ifs(dataset_json);
     if (!ifs)
     {
@@ -790,18 +1215,18 @@ void MainWindow::on_img_remove_clicked(const ImageInfo& image_info)
     ifs >> images_json;
     ifs.close();
 
-    // Find and erase the entry matching file_path
+    // Find and erase the entry matching the file path
     auto it = std::remove_if(images_json.begin(), images_json.end(),
         [&image_info](const json& entry) {
-            return entry.contains("file_path") &&
-                   entry["file_path"] == image_info.file_path.string();
+            return entry.contains("img_id") &&
+                   entry["img_id"] == image_info.img_id;
         });
 
     if (it != images_json.end())
     {
         images_json.erase(it, images_json.end());
 
-        // --- Save updated JSON back to file
+        // Save updated JSON back to file
         std::ofstream ofs(dataset_json);
         ofs << images_json.dump(4); // pretty-print with indent 4
         ofs.close();
@@ -812,11 +1237,16 @@ void MainWindow::on_img_remove_clicked(const ImageInfo& image_info)
     }
 }
 
-void MainWindow::add_image_to_dataset(const fs::path& src_path, const std::string& category)
+fs::path MainWindow::add_image_to_dataset(const fs::path& src_path, const std::string& category)
 {
     try
     {
-        auto dataset_path = AppPaths::Dataset_Images_Path / category;
+        std::string category_lower = category;
+        if (!category_lower.empty())
+        {
+            category_lower[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category_lower[0])));
+        }
+        auto dataset_path = AppPaths::Dataset_Path / category_lower;
         if (!fs::exists(dataset_path))
         {
             fs::create_directories(dataset_path);
@@ -824,22 +1254,22 @@ void MainWindow::add_image_to_dataset(const fs::path& src_path, const std::strin
 
         auto dest_path = dataset_path / src_path.filename();
         fs::copy(src_path, dest_path, fs::copy_options::overwrite_existing);
+        return dest_path;
     }
     catch (const std::exception& ex)
     {
         std::cerr << "Failed to add image: " << ex.what() << std::endl;
+        throw;
     }
 }
 
-void MainWindow::remove_image_from_dataset(const fs::path& src_path, const std::string& category)
+void MainWindow::remove_image_from_dataset(const fs::path& img_path)
 {
     try
     {
-        auto dataset_path = AppPaths::Dataset_Images_Path / category;
-        auto dest_path = dataset_path / src_path.filename();
-        if (fs::exists(dest_path))
+        if (fs::exists(img_path))
         {
-            fs::remove(dest_path);
+            fs::remove(img_path);
         }
     }
     catch (const std::exception& ex)
@@ -883,4 +1313,17 @@ bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     }
 
     return true;
+}
+
+int64_t MainWindow::generate_img_id()
+{
+    auto now = std::chrono::high_resolution_clock::now();
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()).count();
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int64_t> dis(0, 999);
+
+    return milliseconds * 1000 + dis(gen); // Adds 0–999 jitter
 }

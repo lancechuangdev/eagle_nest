@@ -27,6 +27,9 @@ protected:
     Gtk::RadioButton *m_toolkit_btn;
     Gtk::Stack *m_content_stack;
 
+    // Model Training Startup
+    Gtk::Button *m_start_train_model_btn;
+
     // Model Training Stack
     Gtk::Stack *m_training_stack;
     Gtk::Label *m_training_step1_lbl;
@@ -34,6 +37,7 @@ protected:
     Gtk::Label *m_training_step3_lbl;
     Gtk::Button *m_previous_btn;
     Gtk::Button *m_next_btn;
+    Gtk::Button *m_close_training_wizard_btn;
 
     // Model Selection
     Gtk::RadioButton *m_create_model_rbtn;
@@ -44,14 +48,17 @@ protected:
     Gtk::TextView *m_model_comment_tview;
 
     // Image Selection
-    Gtk::RadioButton *m_select_from_dataset_sources_rbtn;
-    Gtk::RadioButton *m_manual_selection_rbtn;
-    Gtk::LinkButton *m_confirm_dataset_lbtn;
+    Gtk::ComboBoxText *m_training_wizard_img_included_cbox;
+    Gtk::ComboBoxText *m_training_wizard_img_category_cbox;    
+    Gtk::Button *m_training_wizard_image_refresh_btn;
+    Gtk::ListBox *m_training_wizard_images_lbox;
     
+    // Model Training
+    Gtk::Button *m_train_model_btn;
+
     // Dataset Explorer Stack
     Gtk::Stack *m_explorer_stack;
     Gtk::RadioButton *m_explorer_dataset_sources_rbtn;
-    Gtk::RadioButton *m_explorer_images_from_sources_rbtn;
     Gtk::RadioButton *m_explorer_training_images_rbtn;
     Gtk::Button *m_dataset_sources_refresh_btn;
     Gtk::Grid *m_dataset_sources_grid;
@@ -61,19 +68,30 @@ protected:
     Gtk::ListBox *m_explorer_images_lbox;
     Gtk::DrawingArea *m_explorer_image_drawing_area;
 
+    // Key events
+    bool on_key_press_event(GdkEventKey *key_event) override;
+    bool on_key_release_event(GdkEventKey *key_event) override;
+
+    // Mouse events
     void on_previous_clicked();
     void on_next_clicked();
+    void on_close_training_wizard_clicked();
     void on_dataset_sources_refresh_clicked();
 
 private:
     struct ImageInfo {
-        fs::path file_path;
+        int64_t img_id; // Unique identifier for the image
+        fs::path src_img_path; // Original path of the image
+        fs::path dest_img_path; // Destination path of the image in the dataset
         std::string source_name;
         std::string source_type;
+        std::string category; // Category of the image (e.g., "Normal", "Abnormal")
+        std::string inclusion; // Flag indicating if the image is part of the training (e.g., "Included", "Excluded")
     };
 
     Glib::RefPtr<Gtk::Builder> m_builder;
     int m_current_step = 0;
+    std::string m_active_model_page = "page_model_welcome";
     std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training"};
     std::vector<Gtk::Label*> m_training_step_labels;
     std::vector<Gtk::CheckButton*> m_datasources_checkboxes;
@@ -81,12 +99,18 @@ private:
     std::vector<Gtk::Label*> m_connection_status_labels;
     std::vector<DatasetSource> m_dataset_sources;
     Glib::RefPtr<Gdk::Pixbuf> m_loaded_explorer_image_pixbuf;
+    bool m_ctrl_pressed = false; // Flag to check if Ctrl key is pressed
 
     void set_window_title(const std::string &title);
     void on_menu_toggled();
+    void on_start_train_model_clicked();
     void update_step_indicator();
     void transition_step(bool step_forward);
     void write_model_readme();
+    void on_training_wizard_image_refresh_clicked();
+    void populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images);
+    void on_train_model_clicked();
+    void update_img_inclusion(const int64_t img_id, const std::string& inclusion);
     void on_explorer_toggled();
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
@@ -97,13 +121,14 @@ private:
     void on_images_from_sources_refresh_clicked();
     void refresh_dataset_sources_options();
     void refresh_image_category_options();
-    void populate_explorer_images_listbox(const std::vector<ImageInfo>& images);
+    void populate_explorer_images_listbox(const std::vector<ImageInfo>& images, bool is_training_set);
     void on_img_add_clicked(const ImageInfo& image_info);
     void on_img_remove_clicked(const ImageInfo& image_info);
-    void add_image_to_dataset(const fs::path& src_path, const std::string& category);
-    void remove_image_from_dataset(const fs::path& src_path, const std::string& category);
+    fs::path add_image_to_dataset(const fs::path& src_path, const std::string& category);
+    void remove_image_from_dataset(const fs::path& img_path);
     void load_image_to_explorer(const std::filesystem::path& image_path);
     bool on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr);
+    int64_t generate_img_id();
 };
 
 #endif
