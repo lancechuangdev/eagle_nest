@@ -2,6 +2,12 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkAdjustment" id="max_epochs_adjustment">
+    <property name="lower">10</property>
+    <property name="upper">1000</property>
+    <property name="step-increment">10</property>
+    <property name="page-increment">10</property>
+  </object>
   <object class="GtkWindow" id="main_window">
     <property name="width-request">500</property>
     <property name="height-request">500</property>
@@ -279,6 +285,19 @@
                         <property name="expand">False</property>
                         <property name="fill">True</property>
                         <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="train_model_btn">
+                        <property name="label" translatable="yes">Start Training</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">4</property>
                       </packing>
                     </child>
                   </object>
@@ -770,45 +789,120 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                       </packing>
                     </child>
                     <child>
-                      <!-- n-columns=3 n-rows=3 -->
+                      <!-- n-columns=2 n-rows=3 -->
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="row-spacing">10</property>
+                        <property name="column-spacing">10</property>
                         <child>
-                          <object class="GtkButton" id="train_model_btn">
-                            <property name="label" translatable="yes">Start Training</property>
+                          <!-- n-columns=2 n-rows=2 -->
+                          <object class="GtkGrid">
                             <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="row-spacing">10</property>
+                            <property name="column-spacing">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="label" translatable="yes">Model Size:</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="model_size_cbox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="active">0</property>
+                                <items>
+                                  <item id="medium" translatable="yes">Medium</item>
+                                  <item id="small" translatable="yes">Small</item>
+                                </items>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="label" translatable="yes">Max Epochs:</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="max_epochs_sbtn">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="adjustment">max_epochs_adjustment</property>
+                                <property name="value">100</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
                             <property name="top-attach">0</property>
+                            <property name="width">2</property>
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child>
+                              <object class="GtkButton" id="train_model_btn1">
+                                <property name="label" translatable="yes">Start Training</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">1</property>
+                            <property name="width">2</property>
+                          </packing>
                         </child>
                         <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
+                          <object class="GtkScrolledWindow">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="hexpand">True</property>
+                            <property name="vexpand">True</property>
+                            <property name="shadow-type">in</property>
+                            <child>
+                              <object class="GtkTextView" id="train_model_tview">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                              </object>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">2</property>
+                            <property name="width">2</property>
+                          </packing>
                         </child>
                       </object>
                       <packing>

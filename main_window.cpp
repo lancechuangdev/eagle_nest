@@ -120,6 +120,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_train_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_train_model_clicked));
     }
 
+    m_builder->get_widget("train_model_tview", m_train_model_tview);
+
     m_builder->get_widget("explorer_stack", m_explorer_stack);
 
     m_builder->get_widget("explorer_dataset_sources_rbtn", m_explorer_dataset_sources_rbtn);
@@ -442,85 +444,6 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
     }).detach(); // Detach the thread to allow it to run independently
 }
 
-void MainWindow::on_train_model_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_train_model_btn->set_sensitive(false);
-
-    // Load images in a separate thread
-    std::thread([this]() {
-        try
-        {
-            auto dataset_path = AppPaths::WIP_Dataset_Path;
-            auto normal_dataset_path = dataset_path / "normal";
-            auto abnormal_dataset_path = dataset_path / "abnormal";
-
-            if (fs::exists(normal_dataset_path)) {
-                // Remove all contents inside the dataset/normal directory
-                fs::remove_all(normal_dataset_path);
-            }
-
-            if (fs::exists(abnormal_dataset_path)) {
-                // Remove all contents inside the dataset/abnormal directory
-                fs::remove_all(abnormal_dataset_path);
-            }
-
-            // Recreate the dataset directory and its subdirectories
-            fs::create_directories(dataset_path / "normal");
-            fs::create_directories(dataset_path / "abnormal");
-
-            // Load existing JSON
-            auto dataset_json = dataset_path / "dataset.json";
-            if (!fs::exists(dataset_json))
-            {
-                std::cerr << "dataset.json does not exist" << std::endl;
-            }
-            else
-            {
-                std::ifstream ifs(dataset_json);
-                    
-                if (!ifs)
-                {
-                    std::cerr << "Failed to open " << dataset_json << std::endl;
-                }
-                else
-                {
-                    json images_json;
-                    ifs >> images_json;
-                    ifs.close();
-                    
-                    for (const auto& entry : images_json)
-                    {
-                        std::string dest_img_path = entry["dest_img_path"];
-                        std::string img_name = fs::path(dest_img_path).filename();
-                        std::string category = entry["category"];
-                        std::string inclusion = entry["inclusion"];
-
-                        // Filter based on inclusion status
-                        if (inclusion != "Included")
-                            continue;
-
-                        category[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category[0])));
-                        auto dataset_category_path = dataset_path / category;
-
-                        // Copy the image from training set to the WIP directory
-                        fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
-                    }
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "Error while preparing training images: " << e.what() << '\n';
-        }
-
-        // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this]() {
-            m_train_model_btn->set_sensitive(true);
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
 void MainWindow::populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images)
 {
     // clear previous rows
@@ -605,6 +528,118 @@ void MainWindow::update_img_inclusion(const int64_t img_id, const std::string& i
     // Save the updated JSON
     std::ofstream ofs(dataset_json);
     ofs << std::setw(4) << images_json << std::endl;
+}
+
+void MainWindow::on_train_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_train_model_btn->set_sensitive(false);
+
+    // Load images in a separate thread
+    std::thread([this]() {
+        // prepare_wip_training_dataset();
+        run_train_efficient_ad_model_script("hallelujah", "small", 3); // Example parameters
+        convert_efficient_ad_model_to_onnx();
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_train_model_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::prepare_wip_training_dataset()
+{
+    try
+    {
+        auto dataset_path = AppPaths::WIP_Dataset_Path;
+        auto normal_dataset_path = dataset_path / "normal";
+        auto abnormal_dataset_path = dataset_path / "abnormal";
+
+        if (fs::exists(normal_dataset_path)) {
+            // Remove all contents inside the dataset/normal directory
+            fs::remove_all(normal_dataset_path);
+        }
+
+        if (fs::exists(abnormal_dataset_path)) {
+            // Remove all contents inside the dataset/abnormal directory
+            fs::remove_all(abnormal_dataset_path);
+        }
+
+        // Recreate the dataset directory and its subdirectories
+        fs::create_directories(dataset_path / "normal");
+        fs::create_directories(dataset_path / "abnormal");
+
+        // Load existing JSON
+        // Copy the image from training set to the WIP directory
+        auto dataset_json = dataset_path / "dataset.json";
+        if (!fs::exists(dataset_json))
+        {
+            std::cerr << "dataset.json does not exist" << std::endl;
+        }
+        else
+        {
+            std::ifstream ifs(dataset_json);
+                
+            if (!ifs)
+            {
+                std::cerr << "Failed to open " << dataset_json << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string img_name = fs::path(dest_img_path).filename();
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+
+                    // Filter based on inclusion status
+                    if (inclusion != "Included")
+                        continue;
+
+                    category[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category[0])));
+                    auto dataset_category_path = dataset_path / category;
+
+                    fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
+                }
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error while preparing training images: " << e.what() << '\n';
+    }
+}
+
+void MainWindow::run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs)
+{
+    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
+    std::array<char, 256> buffer_line;
+
+    fs::path script_path = AppPaths::WIP_Path / "train_model.py";
+    std::string cmd =
+        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
+        "conda activate eagle_nest && "
+        "python \"" + script_path.string() + "\" " + model_name + " " + model_size + " " + std::to_string(max_epochs) + "'";
+
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        buffer->insert(buffer->end(), "Failed to start script.\n");
+        return;
+    }
+
+    std::thread([this, pipe = std::move(pipe), buffer, buffer_line]() mutable {
+        while (fgets(buffer_line.data(), buffer_line.size(), pipe.get()) != nullptr) {
+            std::string line(buffer_line.data());
+            Glib::signal_idle().connect_once([this, buffer, line = std::string(buffer_line.data())]() {
+                buffer->insert(buffer->end(), line);
+            });
+        }
+    }).detach();
 }
 
 void MainWindow::on_explorer_toggled()

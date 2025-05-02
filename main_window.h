@@ -55,6 +55,7 @@ protected:
     
     // Model Training
     Gtk::Button *m_train_model_btn;
+    Gtk::TextView *m_train_model_tview;
 
     // Dataset Explorer Stack
     Gtk::Stack *m_explorer_stack;
@@ -109,8 +110,10 @@ private:
     void write_model_readme();
     void on_training_wizard_image_refresh_clicked();
     void populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images);
-    void on_train_model_clicked();
     void update_img_inclusion(const int64_t img_id, const std::string& inclusion);
+    void on_train_model_clicked();
+    void prepare_wip_training_dataset();
+    void run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs);
     void on_explorer_toggled();
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
