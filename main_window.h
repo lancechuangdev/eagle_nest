@@ -54,6 +54,8 @@ protected:
     Gtk::ListBox *m_training_wizard_images_lbox;
     
     // Model Training
+    Gtk::ComboBoxText *m_model_size_cbox;
+    Gtk::SpinButton *m_max_epochs_sbtn;
     Gtk::Button *m_train_model_btn;
     Gtk::TextView *m_train_model_tview;
 
@@ -61,13 +63,19 @@ protected:
     Gtk::Stack *m_explorer_stack;
     Gtk::RadioButton *m_explorer_dataset_sources_rbtn;
     Gtk::RadioButton *m_explorer_training_images_rbtn;
+    Gtk::RadioButton *m_explorer_test_images_rbtn;
     Gtk::Button *m_dataset_sources_refresh_btn;
     Gtk::Grid *m_dataset_sources_grid;
     Gtk::ComboBoxText *m_dataset_sources_cbox;
-    Gtk::ComboBoxText *m_image_category_cbox;
-    Gtk::Button *m_images_from_sources_refresh_btn;
+    Gtk::ComboBoxText *m_train_image_category_cbox;
+    Gtk::Button *m_train_images_refresh_btn;
     Gtk::ListBox *m_explorer_images_lbox;
     Gtk::DrawingArea *m_explorer_image_drawing_area;
+    Gtk::SpinButton *m_test_split_ratio_sbtn;
+    Gtk::Button *m_auto_split_btn;
+    Gtk::ComboBoxText *m_dataset_type_cbox;
+    Gtk::ComboBoxText *m_test_image_category_cbox;
+    Gtk::Button *m_test_images_refresh_btn;
 
     // Key events
     bool on_key_press_event(GdkEventKey *key_event) override;
@@ -105,15 +113,19 @@ private:
     void set_window_title(const std::string &title);
     void on_menu_toggled();
     void on_start_train_model_clicked();
+    void load_existing_models();
+    void on_existing_model_selection_changed();
+    void on_model_version_selection_changed();
     void update_step_indicator();
     void transition_step(bool step_forward);
-    void write_model_readme();
+    void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment);
     void on_training_wizard_image_refresh_clicked();
     void populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images);
     void update_img_inclusion(const int64_t img_id, const std::string& inclusion);
     void on_train_model_clicked();
     void prepare_wip_training_dataset();
-    void run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs);
+    bool run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt);
+    bool convert_efficient_ad_model_to_onnx(const std::string& model_name);
     void on_explorer_toggled();
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
@@ -121,7 +133,8 @@ private:
     void add_dataset_sources_header();
     void add_dataset_source_row(size_t row_index, const std::string& name, const std::string& type, const std::string& connection_info, const std::string& connection_status, bool checked = true);
     void on_dataset_source_changed();
-    void on_images_from_sources_refresh_clicked();
+    void on_training_images_refresh_clicked();
+    void on_test_images_refresh_clicked();
     void refresh_dataset_sources_options();
     void refresh_image_category_options();
     void populate_explorer_images_listbox(const std::vector<ImageInfo>& images, bool is_training_set);

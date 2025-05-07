@@ -9,8 +9,10 @@ class AppPaths
 public:
     static const std::filesystem::path Detection_Projects_Path;
     static const std::filesystem::path Dataset_Path;
+    static const std::filesystem::path Models_Path;
     static const std::filesystem::path WIP_Path;
     static const std::filesystem::path WIP_Dataset_Path;
+    static const std::filesystem::path WIP_Model_Path;
 
 private:
     static std::filesystem::path getHomePath() {
