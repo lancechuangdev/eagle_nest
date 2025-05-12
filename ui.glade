@@ -543,6 +543,7 @@
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="column-homogeneous">True</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -638,24 +639,44 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                         </child>
                         <child>
                           <object class="GtkBox">
+                            <property name="visible">True</property>
                             <property name="can-focus">False</property>
+                            <property name="margin-end">5</property>
+                            <property name="margin-top">5</property>
                             <property name="spacing">5</property>
                             <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Add All</property>
+                              <object class="GtkButton" id="exclude_train_images_btn">
+                                <property name="label" translatable="yes">Exclude</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
                                 <property name="receives-default">True</property>
+                                <property name="tooltip-text" translatable="yes">Exclude selected images from this training session</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
+                                <property name="pack-type">end</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Remove All</property>
+                              <object class="GtkButton" id="include_train_images_btn">
+                                <property name="label" translatable="yes">Include</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">True</property>
+                                <property name="tooltip-text" translatable="yes">Include selected images to this training session</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="pack-type">end</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="toggle_all_on_wizard_btn">
+                                <property name="label" translatable="yes">Select All</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
                                 <property name="receives-default">True</property>
@@ -663,7 +684,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
-                                <property name="position">1</property>
+                                <property name="position">2</property>
                               </packing>
                             </child>
                           </object>
@@ -710,7 +731,6 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="can-focus">False</property>
                                 <property name="active">0</property>
                                 <items>
-                                  <item translatable="yes">All</item>
                                   <item translatable="yes">Included</item>
                                   <item translatable="yes">Excluded</item>
                                 </items>
@@ -739,9 +759,8 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="can-focus">False</property>
                                 <property name="active">0</property>
                                 <items>
-                                  <item translatable="yes">All</item>
-                                  <item id="&lt;Enter ID&gt;" translatable="yes">Normal</item>
-                                  <item translatable="yes">Abnormal</item>
+                                  <item id="&lt;Enter ID&gt;" translatable="yes">normal</item>
+                                  <item translatable="yes">abnormal</item>
                                 </items>
                               </object>
                               <packing>
@@ -1182,9 +1201,8 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="can-focus">False</property>
                                 <property name="active">0</property>
                                 <items>
-                                  <item translatable="yes">All</item>
-                                  <item translatable="yes">Normal</item>
-                                  <item translatable="yes">Abnormal</item>
+                                  <item translatable="yes">normal</item>
+                                  <item translatable="yes">abnormal</item>
                                 </items>
                               </object>
                               <packing>
@@ -1228,7 +1246,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkDrawingArea" id="explorer_image_drawing_area">
+                                  <object class="GtkDrawingArea" id="explorer_train_image_drawing_area">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                   </object>
@@ -1244,25 +1262,43 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                         </child>
                         <child>
                           <object class="GtkBox">
+                            <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <property name="margin-end">5</property>
                             <property name="spacing">5</property>
                             <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Add All</property>
+                              <object class="GtkButton" id="remove_train_image_btn">
+                                <property name="label" translatable="yes">Remove</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
                                 <property name="receives-default">True</property>
+                                <property name="tooltip-text" translatable="yes">Remove selected items from training set</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
+                                <property name="pack-type">end</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkButton">
-                                <property name="label" translatable="yes">Remove All</property>
+                              <object class="GtkButton" id="add_train_image_btn">
+                                <property name="label" translatable="yes">Add</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">True</property>
+                                <property name="tooltip-text" translatable="yes">Add selected items to training set</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="pack-type">end</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="toggle_all_on_train_btn">
+                                <property name="label" translatable="yes">Select All</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
                                 <property name="receives-default">True</property>
@@ -1270,7 +1306,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
-                                <property name="position">1</property>
+                                <property name="position">2</property>
                               </packing>
                             </child>
                           </object>
@@ -1293,7 +1329,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkListBox" id="explorer_images_lbox">
+                                  <object class="GtkListBox" id="explorer_train_images_lbox">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                   </object>
@@ -1358,6 +1394,7 @@ Use this page to ensure your training data is complete and accurately reflects t
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="row-spacing">10</property>
+                        <property name="column-homogeneous">True</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -1379,10 +1416,10 @@ Use this page to ensure your training data is complete and accurately reflects t
                               <object class="GtkComboBoxText" id="dataset_type_cbox">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
+                                <property name="active">0</property>
                                 <items>
-                                  <item translatable="yes">All</item>
-                                  <item translatable="yes">Test</item>
-                                  <item translatable="yes">Train</item>
+                                  <item translatable="yes">test</item>
+                                  <item translatable="yes">train</item>
                                 </items>
                               </object>
                               <packing>
@@ -1407,10 +1444,10 @@ Use this page to ensure your training data is complete and accurately reflects t
                               <object class="GtkComboBoxText" id="test_image_category_cbox">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
+                                <property name="active">0</property>
                                 <items>
-                                  <item translatable="yes">All</item>
-                                  <item translatable="yes">Normal</item>
-                                  <item translatable="yes">Abnormal</item>
+                                  <item translatable="yes">normal</item>
+                                  <item translatable="yes">abnormal</item>
                                 </items>
                               </object>
                               <packing>
@@ -1517,10 +1554,125 @@ Use this page to ensure your training data is complete and accurately reflects t
                           </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkScrolledWindow">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="vexpand">True</property>
+                            <property name="shadow-type">in</property>
+                            <child>
+                              <object class="GtkViewport">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <child>
+                                  <object class="GtkDrawingArea" id="explorer_test_image_drawing_area">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">5</property>
+                          </packing>
                         </child>
                         <child>
-                          <placeholder/>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="margin-start">5</property>
+                            <property name="vexpand">True</property>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="GtkScrolledWindow">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
+                                <property name="shadow-type">in</property>
+                                <child>
+                                  <object class="GtkViewport">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <child>
+                                      <object class="GtkListBox" id="explorer_test_images_lbox">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">False</property>
+                                        <property name="selection-mode">none</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="margin-end">5</property>
+                                <property name="margin-top">5</property>
+                                <property name="spacing">10</property>
+                                <child>
+                                  <object class="GtkButton" id="toggle_all_on_test_btn">
+                                    <property name="label" translatable="yes">Select All</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkButton" id="remove_test_image_btn">
+                                    <property name="label" translatable="yes">Remove</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">True</property>
+                                    <property name="tooltip-text" translatable="yes">Remove selected items from test set</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="pack-type">end</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkButton" id="add_test_image_btn">
+                                    <property name="label" translatable="yes">Add</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">True</property>
+                                    <property name="tooltip-text" translatable="yes">Add selected items to test set</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="pack-type">end</property>
+                                    <property name="position">2</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">1</property>
+                            <property name="top-attach">5</property>
+                          </packing>
                         </child>
                       </object>
                       <packing>
@@ -1528,9 +1680,6 @@ Use this page to ensure your training data is complete and accurately reflects t
                         <property name="title" translatable="yes">Test Images</property>
                         <property name="position">2</property>
                       </packing>
-                    </child>
-                    <child>
-                      <placeholder/>
                     </child>
                   </object>
                   <packing>

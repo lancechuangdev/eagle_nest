@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <random>
+#include <openssl/sha.h>
 
 namespace fs = std::filesystem;
 using DatasetSource = MainWindow::DatasetSource;
@@ -138,6 +139,37 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
 
     m_builder->get_widget("training_wizard_images_lbox", m_training_wizard_images_lbox);
 
+    m_builder->get_widget("toggle_all_on_wizard_btn", m_toggle_all_on_wizard_btn);
+    if (m_toggle_all_on_wizard_btn)
+    {
+        m_toggle_all_on_wizard_btn->signal_clicked().connect([this]() {
+            m_all_selected_on_wizard = !m_all_selected_on_wizard;
+        
+            set_all_checkboxes(m_training_wizard_images_lbox, m_all_selected_on_wizard);
+        
+            // Update the button label
+            m_toggle_all_on_wizard_btn->set_label(m_all_selected_on_wizard ? "Unselect All" : "Select All");
+        });
+    }
+
+    m_builder->get_widget("include_train_images_btn", m_include_train_images_btn);
+    if (m_include_train_images_btn)
+    {
+        m_include_train_images_btn->signal_clicked().connect([this]() {
+            update_selected_images_inclusion("Included");
+            on_training_wizard_image_refresh_clicked();
+        });
+    }
+
+    m_builder->get_widget("exclude_train_images_btn", m_exclude_train_images_btn);
+    if (m_exclude_train_images_btn)
+    {
+        m_exclude_train_images_btn->signal_clicked().connect([this]() {
+            update_selected_images_inclusion("Excluded");
+            on_training_wizard_image_refresh_clicked();
+        });
+    }
+
     m_builder->get_widget("model_size_cbox", m_model_size_cbox);
 
     m_builder->get_widget("max_epochs_sbtn", m_max_epochs_sbtn);
@@ -187,33 +219,128 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     m_builder->get_widget("train_images_refresh_btn", m_train_images_refresh_btn);
     if (m_train_images_refresh_btn)
     {
-        m_train_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_training_images_refresh_clicked));
+        m_train_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_train_images_refresh_clicked));
     }
 
-    m_builder->get_widget("explorer_images_lbox", m_explorer_images_lbox);
+    m_builder->get_widget("explorer_train_images_lbox", m_explorer_train_images_lbox);
     // Handle row selection
-    m_explorer_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+    m_explorer_train_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
         if (row)
         {
             auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                // on_img_row_clicked(image_path);
-                load_image_to_explorer(image_path);
+                load_image_to_explorer(image_path, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
                 std::cout << "Row activated for image: " << image_path.string() << std::endl;
             }
         }
     });
 
-    m_builder->get_widget("explorer_image_drawing_area", m_explorer_image_drawing_area);
-    m_explorer_image_drawing_area->signal_draw().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_image_draw));
+    m_builder->get_widget("explorer_train_image_drawing_area", m_explorer_train_image_drawing_area);
+    if (m_explorer_train_image_drawing_area)
+    {
+        m_explorer_train_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_explorer_image_draw(cr, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("toggle_all_on_train_btn", m_toggle_all_on_train_btn);
+    if (m_toggle_all_on_train_btn)
+    {
+        m_toggle_all_on_train_btn->signal_clicked().connect([this]() {
+            m_all_selected_on_train = !m_all_selected_on_train;
+        
+            set_all_checkboxes(m_explorer_train_images_lbox, m_all_selected_on_train);
+        
+            // Update the button label
+            m_toggle_all_on_train_btn->set_label(m_all_selected_on_train ? "Unselect All" : "Select All");
+        });
+    }
+
+    m_builder->get_widget("add_train_image_btn", m_add_train_image_btn);
+    if (m_add_train_image_btn)
+    {
+        m_add_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_train_images_clicked));
+    }
+
+    m_builder->get_widget("remove_train_image_btn", m_remove_train_image_btn);
+    if (m_remove_train_image_btn)
+    {
+        m_remove_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_train_images_clicked));
+    }
+
+    m_builder->get_widget("test_split_ratio_sbtn", m_test_split_ratio_sbtn);
+
+    m_builder->get_widget("auto_split_btn", m_auto_split_btn);
+    if (m_auto_split_btn)
+    {
+        m_auto_split_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_auto_split_clicked));
+    }
+
+    m_builder->get_widget("dataset_type_cbox", m_dataset_type_cbox);
+
+    m_builder->get_widget("test_image_category_cbox", m_test_image_category_cbox);
 
     m_builder->get_widget("test_images_refresh_btn", m_test_images_refresh_btn);
     if (m_test_images_refresh_btn)
     {
         m_test_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_test_images_refresh_clicked));
     }
+
+    m_builder->get_widget("explorer_test_images_lbox", m_explorer_test_images_lbox);
+    // Handle row selection
+    m_explorer_test_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                load_image_to_explorer(image_path, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+            }
+        }
+    });
+
+    m_builder->get_widget("explorer_test_image_drawing_area", m_explorer_test_image_drawing_area);
+    if (m_explorer_test_image_drawing_area)
+    {
+        m_explorer_test_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_explorer_image_draw(cr, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("toggle_all_on_test_btn", m_toggle_all_on_test_btn);
+    if (m_toggle_all_on_test_btn)
+    {
+        // m_toggle_all_on_test_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_toggle_all_on_test_clicked));
+        m_toggle_all_on_test_btn->signal_clicked().connect([this]() {
+            m_all_selected_on_test = !m_all_selected_on_test;
+        
+            set_all_checkboxes(m_explorer_test_images_lbox, m_all_selected_on_test);
+        
+            // Update the button label
+            m_toggle_all_on_test_btn->set_label(m_all_selected_on_test ? "Unselect All" : "Select All");
+        });
+    }
+
+    m_builder->get_widget("add_test_image_btn", m_add_test_image_btn);
+    if (m_add_test_image_btn)
+    {
+        m_add_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_test_images_clicked));
+    }
+
+    m_builder->get_widget("remove_test_image_btn", m_remove_test_image_btn);
+    if (m_remove_test_image_btn)
+    {
+        m_remove_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_test_images_clicked));
+    }
+
 }
 
 MainWindow::~MainWindow()
@@ -499,20 +626,21 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
                 
                 for (const auto& entry : images_json)
                 {
-                    int64_t img_id = entry["img_id"];
+                    std::string img_id = entry["img_id"];
                     std::string src_img_path = entry["src_img_path"];
                     std::string dest_img_path = entry["dest_img_path"];
                     std::string source_name = entry["source_name"];
                     std::string source_type = entry["source_type"];
                     std::string category = entry["category"];
                     std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
 
                     // Filter based on inclusion status
-                    if (selected_img_inclusion != "All" && selected_img_inclusion != inclusion)
+                    if (selected_img_inclusion != "all" && selected_img_inclusion != inclusion)
                         continue;
 
                     // Filter based on category
-                    if (selected_img_category != "All" && selected_img_category != category)
+                    if (selected_img_category != category)
                         continue;
                     
                     images_from_training_set.emplace_back(ImageInfo {
@@ -522,7 +650,8 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
                         source_name,
                         source_type,
                         category,
-                        inclusion
+                        inclusion,
+                        dataset_type
                     });
                 }
             }
@@ -535,6 +664,7 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set)]() {
             populate_training_wizard_images_listbox(imgs);
+            m_toggle_all_on_wizard_btn->set_label("Select All");
             m_training_wizard_image_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -551,44 +681,86 @@ void MainWindow::populate_training_wizard_images_listbox(const std::vector<Image
     // add one row per image
     for (const auto& info : images)
     {
-        auto filename = info.dest_img_path.filename().string();
+        auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: checkbox + filename label + "Info" button
         auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
 
-        // Label for the image
+        // Checkbox
+        auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
+        checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
+        hbox->pack_start(*checkbox, Gtk::PACK_SHRINK);
+        checkbox->signal_toggled().connect([this, checkbox, info]() {
+            bool is_checked = checkbox->get_active();
+            if (is_checked)
+                m_selected_images_on_wizard_listbox[checkbox] = info.img_id;
+            else
+                m_selected_images_on_wizard_listbox.erase(checkbox);
+        });
+
         auto lbl = Gtk::make_managed<Gtk::Label>(filename);
         lbl->set_xalign(0);
         lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
         lbl->set_tooltip_text(filename);
-        lbl->set_max_width_chars(40); // Tweak this as needed
-        lbl->set_single_line_mode(true); // Prevent wrapping
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
 
-        // Action button
-        auto btn = Gtk::make_managed<Gtk::Button>(info.inclusion == "Included" ? "Remove" : "Add");
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        btn->signal_clicked().connect([this, btn, info]()
-        {
-            if (btn->get_label() == "Add")
-            {
-                update_img_inclusion(info.img_id, "Included");
-                btn->set_label("Remove");
-            }
-            else if (btn->get_label() == "Remove")
-            {
-                update_img_inclusion(info.img_id, "Excluded");
-                btn->set_label("Add");
-            }
-        });
-
-        // Pack them into the hbox
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto btn = Gtk::make_managed<Gtk::Button>("Info");
+        btn->set_valign(Gtk::ALIGN_CENTER);
         hbox->pack_start(*btn, Gtk::PACK_SHRINK);
 
-        // Add the hbox to a row
-        auto row  = Gtk::make_managed<Gtk::ListBoxRow>();
-        row->add(*hbox);
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        btn->signal_clicked().connect([revealer]() {
+            revealer->set_reveal_child(!revealer->get_reveal_child());
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
 
         // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.dest_img_path));
+        row->set_data("image_path", new fs::path(info.src_img_path));
 
         // Add the row to the listbox
         m_training_wizard_images_lbox->append(*row);
@@ -596,7 +768,7 @@ void MainWindow::populate_training_wizard_images_listbox(const std::vector<Image
     m_training_wizard_images_lbox->show_all_children();
 }
 
-void MainWindow::update_img_inclusion(const int64_t img_id, const std::string& inclusion)
+void MainWindow::update_selected_images_inclusion(const std::string& inclusion)
 {
     // Load existing JSON
     auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
@@ -612,12 +784,22 @@ void MainWindow::update_img_inclusion(const int64_t img_id, const std::string& i
     ifs.close();
 
     // Update the inclusion status
-    for (auto& entry : images_json)
+    for (const auto& [checkbox, img_id] : m_selected_images_on_wizard_listbox)
     {
-        if (entry["img_id"] == img_id)
+        // Check if the image is already in the dataset
+        auto it = std::find_if(images_json.begin(), images_json.end(),
+            [img_id](const json& entry) {
+                return entry["img_id"] == img_id;
+            });
+        if (it != images_json.end())
         {
-            entry["inclusion"] = inclusion;
-            break;
+            // Image found, update its inclusion status
+            (*it)["inclusion"] = inclusion;
+        }
+        else
+        {
+            // Image doesn't exist, add it to the dataset
+            std::cerr << "Image ID not found in dataset.json: " << img_id << std::endl;
         }
     }
 
@@ -736,10 +918,9 @@ void MainWindow::prepare_wip_training_dataset()
                     std::string inclusion = entry["inclusion"];
 
                     // Filter based on inclusion status
-                    if (inclusion != "Included")
+                    if (inclusion != "included")
                         continue;
 
-                    category[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category[0])));
                     auto dataset_category_path = dataset_path / category;
 
                     fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
@@ -896,7 +1077,6 @@ void MainWindow::on_dataset_sources_refresh_clicked()
             
             // Refresh the combo boxes
             refresh_dataset_sources_options();
-            // refresh_image_category_options();
 
             m_dataset_sources_refresh_btn->set_sensitive(true);
         });
@@ -1098,64 +1278,71 @@ void MainWindow::add_dataset_source_row(size_t row_index,
     m_dataset_sources_grid->show_all_children();
 }
 
-void MainWindow::on_training_images_refresh_clicked()
+void MainWindow::on_train_images_refresh_clicked()
 {
     // Disable the button to prevent multiple clicks
     m_train_images_refresh_btn->set_sensitive(false);
 
     // Load images in a separate thread
     std::thread([this]() {
-        std::vector<ImageInfo> images_from_sources;
         // Get selected data source name from combo box
         std::string selected_source_name = m_dataset_sources_cbox->get_active_text();
         std::string selected_img_category = m_train_image_category_cbox->get_active_text();
-        std::vector<DatasetSource> filtered_sources;
-        bool is_training_set = false;
+
+        // Clear previous images
+        m_images_from_datasources.clear();
+
+        // Load existing JSON
+        json images_json;
+        auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+        std::ifstream ifs(dataset_json);
+        if (!ifs)
+        {
+            std::cerr << "Failed to open dataset.json" << std::endl;
+        }
+        else
+        {
+            ifs >> images_json;
+            ifs.close();
+        }
 
         try
         {
             if (selected_source_name == "Training Set")
             {
-                is_training_set = true;
+                for (const auto& entry : images_json)
+                {
+                    std::string img_id = entry["img_id"];
+                    fs::path src_img_path = entry["src_img_path"];
+                    fs::path dest_img_path = entry["dest_img_path"];
+                    std::string source_name = entry["source_name"];
+                    std::string source_type = entry["source_type"];
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
 
-                // Load existing JSON
-                auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
-                std::ifstream ifs(dataset_json);
-                if (!ifs)
-                {
-                    std::cerr << "Failed to open dataset.json" << std::endl;
-                }
-                else
-                {
-                    json images_json;
-                    ifs >> images_json;
-                    ifs.close();
+                    if (dataset_type != "train")
+                        continue;
                     
-                    for (const auto& entry : images_json)
-                    {
-                        int64_t img_id = entry["img_id"];
-                        fs::path src_img_path = entry["src_img_path"];
-                        fs::path dest_img_path = entry["dest_img_path"];
-                        std::string source_name = entry["source_name"];
-                        std::string source_type = entry["source_type"];
-                        std::string category = entry["category"];
-                        
-                        if (selected_img_category != "All" && selected_img_category != category)
-                            continue;
-                        
-                        images_from_sources.emplace_back(ImageInfo{
-                            img_id,
-                            src_img_path,
-                            dest_img_path,
-                            source_name,
-                            source_type,
-                            category
-                        });
-                    }
+                    if (selected_img_category != category)
+                        continue;
+                    
+                    m_images_from_datasources.emplace_back(ImageInfo{
+                        img_id,
+                        src_img_path,
+                        dest_img_path,
+                        source_name,
+                        source_type,
+                        category,
+                        inclusion,
+                        dataset_type
+                    });
                 }
             }
             else
             {
+                std::vector<DatasetSource> filtered_sources;
+
                 for (const auto& source : m_dataset_sources)
                 {
                     // Skip display-only sources
@@ -1188,11 +1375,11 @@ void MainWindow::on_training_images_refresh_clicked()
                 {
                     std::vector<fs::path> dataset_paths;
 
-                    if (selected_img_category == "All" || selected_img_category == "Normal")
+                    if (selected_img_category == "normal")
                     {
                         dataset_paths.push_back(fs::path(source.connection_info) / "normal");
                     }
-                    if (selected_img_category == "All" || selected_img_category == "Abnormal")
+                    else if (selected_img_category == "abnormal")
                     {
                         dataset_paths.push_back(fs::path(source.connection_info) / "abnormal");
                     }
@@ -1205,17 +1392,42 @@ void MainWindow::on_training_images_refresh_clicked()
                             {
                                 if (dir_entry.is_regular_file() && is_image_file(dir_entry.path()))
                                 {
-                                    int64_t img_id = 0; // Placeholder for image ID
-                                    fs::path src_img_path = dir_entry.path();
-                                    fs::path dest_img_path = dir_entry.path();
-                                    images_from_sources.emplace_back(ImageInfo{
-                                        img_id,
-                                        src_img_path,
-                                        dest_img_path,
-                                        source.name,
-                                        source.type,
-                                        selected_img_category
-                                    });
+                                    std::string src_img_path_str = dir_entry.path().string();
+
+                                    // Check if the image is already in the dataset
+                                    auto it = std::find_if(images_json.begin(), images_json.end(),
+                                        [src_img_path_str](const json& entry) {
+                                            return entry["src_img_path"] == src_img_path_str;
+                                        });
+                                    
+                                    if (it != images_json.end())
+                                    {
+                                        auto& image_entry = *it;
+                                        m_images_from_datasources.emplace_back(ImageInfo{
+                                            image_entry["img_id"],
+                                            image_entry["src_img_path"],
+                                            image_entry["dest_img_path"],
+                                            image_entry["source_name"],
+                                            image_entry["source_type"],
+                                            image_entry["category"],
+                                            image_entry["inclusion"],
+                                            image_entry["dataset_type"]
+                                        });
+                                    }
+                                    else
+                                    {
+                                        std::string img_id = generate_sha256(src_img_path_str);
+                                        fs::path src_img_path = dir_entry.path();
+                                        fs::path dest_img_path = fs::path(); // unknown destination path
+                                        m_images_from_datasources.emplace_back(ImageInfo{
+                                            img_id,
+                                            src_img_path,
+                                            dest_img_path,
+                                            source.name,
+                                            source.type,
+                                            selected_img_category
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -1229,25 +1441,10 @@ void MainWindow::on_training_images_refresh_clicked()
         }
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_sources), is_training_set]() {
-            populate_explorer_images_listbox(imgs, is_training_set);
-            m_train_images_refresh_btn->set_sensitive(true);
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
-void MainWindow::on_test_images_refresh_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_test_images_refresh_btn->set_sensitive(false);
-
-    // Load images in a separate thread
-    std::thread([this]() {
-        // Load images from the test set
-
-        // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this]() {
-            m_test_images_refresh_btn->set_sensitive(true);
+            populate_explorer_train_images_listbox();
+            m_toggle_all_on_train_btn->set_label("Select All");
+            m_train_images_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
 }
@@ -1286,136 +1483,202 @@ void MainWindow::refresh_dataset_sources_options()
     m_dataset_sources_cbox->show();
 }
 
-void MainWindow::refresh_image_category_options()
-{
-    // Clear the existing options
-    m_train_image_category_cbox->remove_all();
-
-    // Add all options
-    m_train_image_category_cbox->append("All");
-    m_train_image_category_cbox->append("Normal");
-    m_train_image_category_cbox->append("Abnormal");
-
-    // Set the first option as active
-    m_train_image_category_cbox->set_active(0);
-    
-    // Show the updated options
-    m_train_image_category_cbox->show();
-}
-
-void MainWindow::populate_explorer_images_listbox(const std::vector<ImageInfo>& images, bool is_training_set)
+void MainWindow::populate_explorer_train_images_listbox()
 {
     // clear previous rows
-    for (auto* child : m_explorer_images_lbox->get_children())
-    m_explorer_images_lbox->remove(*child);
-    json images_json;
-
-    // Load existing dataset.json for later use
-    // If we are in the training set, we don't need to load the dataset.json
-    if (!is_training_set)
-    {
-        auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
-        std::ifstream ifs(dataset_json);
-        if (!ifs)
-        {
-            std::cerr << "Failed to open dataset.json" << std::endl;
-        }
-        else
-        {
-            ifs >> images_json;
-            ifs.close();
-        }
+    for (auto* child : m_explorer_train_images_lbox->get_children()) {
+        m_explorer_train_images_lbox->remove(*child);
     }
 
+    json images_json;
+
     // add one row per image
-    for (const auto& info : images)
+    for (const ImageInfo &info : m_images_from_datasources)
     {
         auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: checkbox + filename label + "Info" button
         auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
 
-        // Label for the image
+        // Checkbox
+        auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
+        checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
+        hbox->pack_start(*checkbox, Gtk::PACK_SHRINK);
+        checkbox->signal_toggled().connect([this, checkbox, info]() {
+            bool is_checked = checkbox->get_active();
+            if (is_checked)
+                m_selected_images_on_train_listbox[checkbox] = info.img_id;
+            else
+                m_selected_images_on_train_listbox.erase(checkbox);
+        });
+
         auto lbl = Gtk::make_managed<Gtk::Label>(filename);
         lbl->set_xalign(0);
         lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
         lbl->set_tooltip_text(filename);
-        lbl->set_max_width_chars(40); // Tweak this as needed
-        lbl->set_single_line_mode(true); // Prevent wrapping
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
 
-        // Check if the image is already in the dataset.json
-        bool is_in_dataset = false;
-        if (is_training_set)
-        {
-            is_in_dataset = true;
-        }
-        else
-        {
-            auto it = std::remove_if(images_json.begin(), images_json.end(),
-            [&info](const json& entry) {
-                return entry.contains("src_img_path") &&
-                    entry["src_img_path"] == info.src_img_path.string();
-            });
-            if (it != images_json.end())
-            {
-                is_in_dataset = true;
-            }
-        }
-
-        // Action button
-        auto action_label = is_in_dataset ? "Remove" : "Add";
-        auto btn = Gtk::make_managed<Gtk::Button>(action_label);
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        btn->signal_clicked().connect([this, btn, info]()
-        {
-            if (btn->get_label() == "Add")
-            {
-                on_img_add_clicked(info);
-                btn->set_label("Remove");
-            }
-            else if (btn->get_label() == "Remove")
-            {
-                on_img_remove_clicked(info);
-                btn->set_label("Add");
-            }
-        });
-
-        // Pack them into the hbox
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto btn = Gtk::make_managed<Gtk::Button>("Info");
+        btn->set_valign(Gtk::ALIGN_CENTER);
         hbox->pack_start(*btn, Gtk::PACK_SHRINK);
 
-        // Add the hbox to a row
-        auto row  = Gtk::make_managed<Gtk::ListBoxRow>();
-        row->add(*hbox);
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        btn->signal_clicked().connect([revealer]() {
+            revealer->set_reveal_child(!revealer->get_reveal_child());
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
 
         // Store the path as custom data
         row->set_data("image_path", new fs::path(info.src_img_path));
 
         // Add the row to the listbox
-        m_explorer_images_lbox->append(*row);
+        m_explorer_train_images_lbox->append(*row);
     }
-    m_explorer_images_lbox->show_all_children();
+    m_explorer_train_images_lbox->show_all_children();
 }
 
-void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
+void MainWindow::add_selected_images_to_train(std::map<Gtk::CheckButton*, std::string> selected_images)
 {
-    std::cout << "Add button clicked for: " << image_info.src_img_path.string() << std::endl;
-    std::string category = m_ctrl_pressed ? "Abnormal" : "Normal";
-    auto dest_img_path = add_image_to_dataset(image_info.src_img_path, category);
+    std::string category = m_ctrl_pressed ? "abnormal" : "normal";
 
-    // Create a JSON entry
-    json image_entry;
-    image_entry["img_id"] = generate_img_id();
-    image_entry["src_img_path"] = image_info.src_img_path.string();
-    image_entry["dest_img_path"] = dest_img_path.string();
-    image_entry["source_name"] = image_info.source_name;
-    image_entry["source_type"] = image_info.source_type;
-    image_entry["category"] = category;
-    image_entry["inclusion"] = "Included";
-    
-    // Path to the JSON file
+    // Load dataset.json
     auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
-
-    // Load existing JSON array (if file exists)
     json images_json = json::array();
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json, or it doesn't exist" << std::endl;
+    }
+    else if (std::ifstream ifs{dataset_json})
+    {
+        try
+        {
+            ifs >> images_json;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to parse existing JSON, resetting: " << e.what() << std::endl;
+        }
+        ifs.close();
+    }
+
+    for (const auto& [checkbox, img_id] : selected_images)
+    {
+        std::cout << "Selected image ID: " << img_id << std::endl;
+
+        // Check if the image is already in the dataset
+        auto it = std::find_if(images_json.begin(), images_json.end(),
+            [img_id](const json& entry) {
+                return entry["img_id"] == img_id;
+            });
+        if (it != images_json.end())
+        {
+            std::cerr << "Image ID " << img_id << " already exists in the dataset." << std::endl;
+            continue; // Skip this image
+        }
+
+        // Find the corresponding image info from the data source
+        auto it2 = std::find_if(m_images_from_datasources.begin(), m_images_from_datasources.end(),
+            [img_id](const ImageInfo& info) {
+                return info.img_id == img_id;
+            });
+    
+        if (it2 != m_images_from_datasources.end()) {
+            auto& image_info = *it2;
+            auto dest_img_path = copy_image_to_dataset(image_info.src_img_path, "train", category);
+
+            // Create a JSON entry
+            json image_entry;
+            image_entry["img_id"] = image_info.img_id;
+            image_entry["src_img_path"] = image_info.src_img_path.string();
+            image_entry["dest_img_path"] = dest_img_path.string();
+            image_entry["source_name"] = image_info.source_name;
+            image_entry["source_type"] = image_info.source_type;
+            image_entry["category"] = category;
+            image_entry["inclusion"] = "Included";
+            image_entry["dataset_type"] = "train";
+
+            // Add the new entry
+            images_json.push_back(image_entry);
+        }
+        else
+        {
+            std::cerr << "Image ID " << img_id << " not found in the data source." << std::endl;
+        }
+    }
+
+    // Save updated JSON back
+    std::ofstream ofs(dataset_json);
+    if (ofs)
+    {
+        ofs << images_json.dump(4); // pretty-print with indent of 4
+    }
+    else
+    {
+        std::cerr << "Failed to open " << dataset_json << " for writing" << std::endl;
+    }
+
+    // Clear the selected images
+    selected_images.clear();
+}
+
+void MainWindow::remove_selected_images_from_train(std::map<Gtk::CheckButton*, std::string> selected_images)
+{
+    // Load dataset.json
+    auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json" << std::endl;
+        return;
+    }
+    
+    json images_json;
     if (std::ifstream ifs{dataset_json})
     {
         try
@@ -1428,9 +1691,28 @@ void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
             images_json = json::array(); // fallback
         }
     }
+    ifs.close();
 
-    // Add the new entry
-    images_json.push_back(image_entry);
+    for (const auto& [checkbox, img_id] : selected_images)
+    {
+        std::cout << "Selected image ID: " << img_id << std::endl;
+
+        // Check if the image is already in the dataset
+        auto it = std::find_if(images_json.begin(), images_json.end(),
+            [img_id](const json& entry) {
+                return entry["img_id"] == img_id;
+            });
+        if (it == images_json.end())
+        {
+            std::cerr << "Image ID " << img_id << " already exists in the dataset." << std::endl;
+            continue; // Skip this image
+        }
+
+        // Find and erase the corresponding image info
+        std::string dest_img_path = (*it)["dest_img_path"];
+        remove_image_from_dataset(dest_img_path);
+        images_json.erase(it, images_json.end());
+    }
 
     // Save updated JSON back
     std::ofstream ofs(dataset_json);
@@ -1442,58 +1724,33 @@ void MainWindow::on_img_add_clicked(const ImageInfo& image_info)
     {
         std::cerr << "Failed to open " << dataset_json << " for writing" << std::endl;
     }
+
+    // Clear the selected images
+    selected_images.clear();
 }
 
-void MainWindow::on_img_remove_clicked(const ImageInfo& image_info)
+
+void MainWindow::on_add_train_images_clicked()
 {
-    std::cout << "Remove button clicked for: " << image_info.dest_img_path.string() << std::endl;
-    remove_image_from_dataset(image_info.dest_img_path);
+    add_selected_images_to_train(m_selected_images_on_train_listbox);
 
-    // Load existing JSON
-    auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
-    std::ifstream ifs(dataset_json);
-    if (!ifs)
-    {
-        std::cerr << "Failed to open dataset.json" << std::endl;
-        return;
-    }
-
-    json images_json;
-    ifs >> images_json;
-    ifs.close();
-
-    // Find and erase the entry matching the file path
-    auto it = std::remove_if(images_json.begin(), images_json.end(),
-        [&image_info](const json& entry) {
-            return entry.contains("img_id") &&
-                   entry["img_id"] == image_info.img_id;
-        });
-
-    if (it != images_json.end())
-    {
-        images_json.erase(it, images_json.end());
-
-        // Save updated JSON back to file
-        std::ofstream ofs(dataset_json);
-        ofs << images_json.dump(4); // pretty-print with indent 4
-        ofs.close();
-    }
-    else
-    {
-        std::cout << "No matching entry found to remove." << std::endl;
-    }
+    // Refresh the train images listbox
+    on_train_images_refresh_clicked();
 }
 
-fs::path MainWindow::add_image_to_dataset(const fs::path& src_path, const std::string& category)
+void MainWindow::on_remove_train_images_clicked()
+{
+    remove_selected_images_from_train(m_selected_images_on_train_listbox);
+
+    // Refresh the train images listbox
+    on_train_images_refresh_clicked();
+}
+
+fs::path MainWindow::copy_image_to_dataset(const fs::path& src_path, const std::string& dataset_type, const std::string& category)
 {
     try
     {
-        std::string category_lower = category;
-        if (!category_lower.empty())
-        {
-            category_lower[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(category_lower[0])));
-        }
-        auto dataset_path = AppPaths::Dataset_Path / category_lower;
+        auto dataset_path = AppPaths::Dataset_Path / dataset_type / category;
         if (!fs::exists(dataset_path))
         {
             fs::create_directories(dataset_path);
@@ -1525,12 +1782,15 @@ void MainWindow::remove_image_from_dataset(const fs::path& img_path)
     }
 }
 
-void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path)
+void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area)
 {
     try
     {
-        m_loaded_explorer_image_pixbuf = Gdk::Pixbuf::create_from_file(image_path.string());
-        m_explorer_image_drawing_area->queue_draw(); // force redraw
+        pixbuf = Gdk::Pixbuf::create_from_file(image_path.string());
+        if (target_drawing_area)
+        {
+            target_drawing_area->queue_draw(); // force redraw
+        }
     }
     catch (const Glib::Error& ex)
     {
@@ -1538,23 +1798,23 @@ void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path)
     }
 }
 
-bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr)
+bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area)
 {
-    if (m_loaded_explorer_image_pixbuf)
+    if (pixbuf)
     {
         // Scale the image to fit the drawing area
-        auto allocation = m_explorer_image_drawing_area->get_allocation();
+        auto allocation = area->get_allocation();
         int area_width = allocation.get_width();
         int area_height = allocation.get_height();
 
         // Calculate scale ratio
-        double scale_x = static_cast<double>(area_width) / m_loaded_explorer_image_pixbuf->get_width();
-        double scale_y = static_cast<double>(area_height) / m_loaded_explorer_image_pixbuf->get_height();
+        double scale_x = static_cast<double>(area_width) / pixbuf->get_width();
+        double scale_y = static_cast<double>(area_height) / pixbuf->get_height();
         double scale = std::min(scale_x, scale_y);
 
         cr->save();
         cr->scale(scale, scale);
-        Gdk::Cairo::set_source_pixbuf(cr, m_loaded_explorer_image_pixbuf, 0, 0);
+        Gdk::Cairo::set_source_pixbuf(cr, pixbuf, 0, 0);
         cr->paint();
         cr->restore();
     }
@@ -1562,15 +1822,384 @@ bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     return true;
 }
 
-int64_t MainWindow::generate_img_id()
+
+std::string MainWindow::generate_sha256(const std::string& input)
 {
-    auto now = std::chrono::high_resolution_clock::now();
-    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now.time_since_epoch()).count();
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256(reinterpret_cast<const unsigned char*>(input.c_str()), input.size(), hash);
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(0, 999);
+    std::ostringstream result;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+        result << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    return result.str();
+}
 
-    return milliseconds * 1000 + dis(gen); // Adds 0–999 jitter
+// int64_t MainWindow::generate_img_id()
+// {
+//     auto now = std::chrono::high_resolution_clock::now();
+//     auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+//         now.time_since_epoch()).count();
+
+//     std::random_device rd;
+//     std::mt19937 gen(rd());
+//     std::uniform_int_distribution<int64_t> dis(0, 999);
+
+//     return milliseconds * 1000 + dis(gen); // Adds 0–999 jitter
+// }
+
+void MainWindow::on_auto_split_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_auto_split_btn->set_sensitive(false);
+
+    // Perform auto-split in a separate thread
+    std::thread([this]() {
+        double split_ratio = m_test_split_ratio_sbtn->get_value() / 100.0;
+        auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+        std::ifstream ifs(dataset_json);
+        if (!ifs)
+        {
+            std::cerr << "Failed to open dataset.json" << std::endl;
+            return;
+        }
+
+        // Load existing JSON
+        json images_json;
+        ifs >> images_json;
+        ifs.close();
+        if (images_json.empty())
+        {
+            std::cerr << "No images found in dataset.json" << std::endl;
+            return;
+        }
+
+        // Mark all as Training
+        for (auto& entry : images_json)
+        {
+            entry["dataset_type"] = "train";
+        }
+
+        std::vector<std::reference_wrapper<json>> normal_images;
+        std::vector<std::reference_wrapper<json>> abnormal_images;
+
+        for (auto& entry : images_json)
+        {
+            if (entry["category"] == "Normal")
+                normal_images.push_back(entry);
+            else
+                abnormal_images.push_back(entry);
+        }
+
+        // Shuffle both groups
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(normal_images.begin(), normal_images.end(), g);
+        std::shuffle(abnormal_images.begin(), abnormal_images.end(), g);
+     
+        // Split and Assign "Testing" dataset_type
+        auto split = [split_ratio](std::vector<std::reference_wrapper<json>>& group, const std::string& category)
+        {
+            size_t test_count = static_cast<size_t>(group.size() * split_ratio);
+            for (size_t i = 0; i < group.size(); ++i)
+            {
+                if (i < test_count)
+                {
+                    std::string from = group[i].get()["dest_img_path"];
+                    fs::path to = AppPaths::Dataset_Path / "test" / category;
+                    if (!fs::exists(to))
+                    {
+                        fs::create_directories(to);
+                    }
+                    std::string img_name = fs::path(from).filename();
+                    to /= img_name;
+                    fs::rename(from, to);
+                    group[i].get()["dataset_type"] = "test";
+                    group[i].get()["dest_img_path"] = to.string();
+                }
+            }
+        };
+        split(normal_images, "normal");
+        split(abnormal_images, "abnormal");
+
+        // Save back
+        std::ofstream ofs(dataset_json);
+        if (ofs)
+        {
+            ofs << images_json.dump(4);
+        }
+        else
+        {
+            std::cerr << "Failed to open " << dataset_json << " for writing" << std::endl;
+        }
+        
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_auto_split_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::on_test_images_refresh_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_test_images_refresh_btn->set_sensitive(false);
+
+    std::string selected_dataset_type = m_dataset_type_cbox->get_active_text();
+    std::string selected_img_category = m_test_image_category_cbox->get_active_text();
+
+    // Load images in a separate thread
+    std::thread([this, selected_dataset_type = std::move(selected_dataset_type),
+        selected_img_category = std::move(selected_img_category)]()
+    {
+        std::vector<ImageInfo> filtered_images;
+
+        // Load existing JSON
+        auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+        std::ifstream ifs(dataset_json);
+        if (!ifs)
+        {
+            std::cerr << "Failed to open dataset.json" << std::endl;
+        }
+        else
+        {
+            json images_json;
+            ifs >> images_json;
+            ifs.close();
+            
+            for (const auto& entry : images_json)
+            {
+                std::string img_id = entry["img_id"];
+                fs::path src_img_path = entry["src_img_path"];
+                fs::path dest_img_path = entry["dest_img_path"];
+                std::string source_name = entry["source_name"];
+                std::string source_type = entry["source_type"];
+                std::string category = entry["category"];
+                std::string inclusion = entry["inclusion"];
+                std::string dataset_type = entry["dataset_type"];
+
+                if (selected_dataset_type != dataset_type)
+                    continue;
+
+                if (selected_img_category != category)
+                    continue;
+                
+                filtered_images.emplace_back(ImageInfo{
+                    img_id,
+                    src_img_path,
+                    dest_img_path,
+                    source_name,
+                    source_type,
+                    category,
+                    inclusion,
+                    dataset_type
+                });
+            }
+        }
+
+        Glib::signal_idle().connect_once([this, imgs = std::move(filtered_images)]() {
+            populate_explorer_test_images_listbox(imgs);
+            m_toggle_all_on_test_btn->set_label("Select All");
+            m_test_images_refresh_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::populate_explorer_test_images_listbox(const std::vector<ImageInfo>& images)
+{
+    // Clear previous rows
+    for (auto* child : m_explorer_test_images_lbox->get_children()) {
+        m_explorer_test_images_lbox->remove(*child);
+    }
+
+    for (const auto& info : images)
+    {
+        auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: checkbox + filename label + "Info" button
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        // Checkbox
+        auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
+        checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
+        hbox->pack_start(*checkbox, Gtk::PACK_SHRINK);
+        checkbox->signal_toggled().connect([this, checkbox, info]() {
+            bool is_checked = checkbox->get_active();
+            if (is_checked)
+                m_selected_images_on_test_listbox[checkbox] = info.img_id;
+            else
+                m_selected_images_on_test_listbox.erase(checkbox);
+        });
+
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
+
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto btn = Gtk::make_managed<Gtk::Button>("Info");
+        btn->set_valign(Gtk::ALIGN_CENTER);
+        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        btn->signal_clicked().connect([revealer]() {
+            revealer->set_reveal_child(!revealer->get_reveal_child());
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
+        row->set_data("image_path", new fs::path(info.dest_img_path));
+
+        m_explorer_test_images_lbox->append(*row);
+
+        // Show everything
+        vbox->show_all();  // includes hbox, but not details_box yet
+        row->show();
+    }
+
+    m_explorer_test_images_lbox->show_all_children();
+}
+
+void MainWindow::set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked)
+{
+    for (auto* child : images_lbox->get_children()) {
+        auto row = dynamic_cast<Gtk::ListBoxRow*>(child);
+        if (!row) continue;
+
+        auto vbox = dynamic_cast<Gtk::Box*>(row->get_child());
+        if (!vbox) continue;
+
+        auto hbox = dynamic_cast<Gtk::Box*>(vbox->get_children()[0]);
+        if (!hbox) continue;
+
+        auto checkbox = dynamic_cast<Gtk::CheckButton*>(hbox->get_children()[0]);
+        if (checkbox) checkbox->set_active(checked);  // Will update m_selected_checkboxes too
+    }
+}
+
+void MainWindow::move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type)
+{
+    // Load dataset.json
+    auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json" << std::endl;
+        return;
+    }
+    json images_json;
+    ifs >> images_json;
+    ifs.close();
+
+    for (const auto& [checkbox, img_id] : selected_images)
+    {
+        std::cout << "Selected image ID: " << img_id << std::endl;
+        // Find the corresponding image in images_json
+        auto it = std::find_if(images_json.begin(), images_json.end(),
+            [img_id](const json& entry) {
+                return entry.contains("img_id") && entry["img_id"] == img_id;
+            });
+        if (it != images_json.end())
+        {
+            // Print the image path
+            std::cout << "Image Path: " << (*it)["dest_img_path"] << std::endl;
+
+            // check if the image is already in the test set
+            if ((*it)["dataset_type"] == dataset_type)
+            {
+                std::cout << "Image is already in the test set." << std::endl;
+            }
+            else
+            {
+                std::string from = (*it)["dest_img_path"];
+                std::string category = (*it)["category"];
+                fs::path to = AppPaths::Dataset_Path / dataset_type / category;
+                if (!fs::exists(to))
+                {
+                    fs::create_directories(to);
+                }
+                std::string img_name = fs::path(from).filename();
+                to /= img_name;
+                fs::rename(from, to);
+                (*it)["dataset_type"] = dataset_type;
+                (*it)["dest_img_path"] = to.string();
+            }
+        }
+        else
+        {
+            std::cout << "Image ID not found in dataset.json" << std::endl;
+        }
+    }
+
+    // Save back
+    std::ofstream ofs(dataset_json);
+    if (ofs)
+    {
+        ofs << images_json.dump(4);
+    }
+    else
+    {
+        std::cerr << "Failed to open " << dataset_json << " for writing" << std::endl;
+    }
+
+    // Clear the selected images
+    selected_images.clear();
+}
+
+void MainWindow::on_add_test_images_clicked()
+{
+    move_selected_images(m_selected_images_on_test_listbox, "test");
+
+    // Refresh the test images listbox
+    on_test_images_refresh_clicked();
+}
+
+void MainWindow::on_remove_test_images_clicked()
+{
+    move_selected_images(m_selected_images_on_test_listbox, "train");
+
+    // Refresh the test images listbox
+    on_test_images_refresh_clicked();
 }

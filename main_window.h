@@ -52,7 +52,10 @@ protected:
     Gtk::ComboBoxText *m_training_wizard_img_category_cbox;    
     Gtk::Button *m_training_wizard_image_refresh_btn;
     Gtk::ListBox *m_training_wizard_images_lbox;
-    
+    Gtk::Button *m_toggle_all_on_wizard_btn;
+    Gtk::Button *m_include_train_images_btn;
+    Gtk::Button *m_exclude_train_images_btn;
+
     // Model Training
     Gtk::ComboBoxText *m_model_size_cbox;
     Gtk::SpinButton *m_max_epochs_sbtn;
@@ -69,13 +72,21 @@ protected:
     Gtk::ComboBoxText *m_dataset_sources_cbox;
     Gtk::ComboBoxText *m_train_image_category_cbox;
     Gtk::Button *m_train_images_refresh_btn;
-    Gtk::ListBox *m_explorer_images_lbox;
-    Gtk::DrawingArea *m_explorer_image_drawing_area;
+    Gtk::ListBox *m_explorer_train_images_lbox;
+    Gtk::DrawingArea *m_explorer_train_image_drawing_area;
+    Gtk::Button *m_toggle_all_on_train_btn;
+    Gtk::Button *m_add_train_image_btn;
+    Gtk::Button *m_remove_train_image_btn;
     Gtk::SpinButton *m_test_split_ratio_sbtn;
     Gtk::Button *m_auto_split_btn;
     Gtk::ComboBoxText *m_dataset_type_cbox;
     Gtk::ComboBoxText *m_test_image_category_cbox;
     Gtk::Button *m_test_images_refresh_btn;
+    Gtk::ListBox *m_explorer_test_images_lbox;
+    Gtk::DrawingArea *m_explorer_test_image_drawing_area;
+    Gtk::Button *m_toggle_all_on_test_btn;
+    Gtk::Button *m_add_test_image_btn;
+    Gtk::Button *m_remove_test_image_btn;
 
     // Key events
     bool on_key_press_event(GdkEventKey *key_event) override;
@@ -86,16 +97,33 @@ protected:
     void on_next_clicked();
     void on_close_training_wizard_clicked();
     void on_dataset_sources_refresh_clicked();
+    void on_menu_toggled();
+    void on_start_train_model_clicked();
+    void on_existing_model_selection_changed();
+    void on_model_version_selection_changed();
+    void on_training_wizard_image_refresh_clicked();
+    void on_train_model_clicked();
+    void on_explorer_toggled();
+    void on_dataset_source_changed();
+    void on_train_images_refresh_clicked();
+    void on_add_train_images_clicked();
+    void on_remove_train_images_clicked();
+    bool on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area);
+    void on_auto_split_clicked();
+    void on_test_images_refresh_clicked();
+    void on_add_test_images_clicked();
+    void on_remove_test_images_clicked();
 
 private:
     struct ImageInfo {
-        int64_t img_id; // Unique identifier for the image
+        std::string img_id; // Unique identifier for the image
         fs::path src_img_path; // Original path of the image
         fs::path dest_img_path; // Destination path of the image in the dataset
         std::string source_name;
         std::string source_type;
-        std::string category; // Category of the image (e.g., "Normal", "Abnormal")
-        std::string inclusion; // Flag indicating if the image is part of the training (e.g., "Included", "Excluded")
+        std::string category; // Category of the image (e.g., "normal", "abnormal")
+        std::string inclusion; // Flag indicating if the image is part of the training (e.g., "included", "excluded")
+        std::string dataset_type; // Type of dataset (e.g., "train", "test")
     };
 
     Glib::RefPtr<Gtk::Builder> m_builder;
@@ -107,44 +135,43 @@ private:
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
     std::vector<Gtk::Label*> m_connection_status_labels;
     std::vector<DatasetSource> m_dataset_sources;
-    Glib::RefPtr<Gdk::Pixbuf> m_loaded_explorer_image_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_explorer_train_img_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_explorer_test_img_pixbuf;
+    std::vector<ImageInfo> m_images_from_datasources;
     bool m_ctrl_pressed = false; // Flag to check if Ctrl key is pressed
+    bool m_all_selected_on_train = false; // Flag to check if all images are selected in the training listbox 
+    bool m_all_selected_on_test = false; // Flag to check if all images are selected in the test listbox
+    bool m_all_selected_on_wizard = false; // Flag to check if all images are selected in the wizard listbox
+    std::map<Gtk::CheckButton*, std::string> m_selected_images_on_train_listbox;
+    std::map<Gtk::CheckButton*, std::string> m_selected_images_on_test_listbox;
+    std::map<Gtk::CheckButton*, std::string> m_selected_images_on_wizard_listbox;
 
     void set_window_title(const std::string &title);
-    void on_menu_toggled();
-    void on_start_train_model_clicked();
     void load_existing_models();
-    void on_existing_model_selection_changed();
-    void on_model_version_selection_changed();
     void update_step_indicator();
     void transition_step(bool step_forward);
     void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment);
-    void on_training_wizard_image_refresh_clicked();
     void populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images);
-    void update_img_inclusion(const int64_t img_id, const std::string& inclusion);
-    void on_train_model_clicked();
+    void update_selected_images_inclusion(const std::string& inclusion);
     void prepare_wip_training_dataset();
     bool run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt);
     bool convert_efficient_ad_model_to_onnx(const std::string& model_name);
-    void on_explorer_toggled();
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
     void clear_dataset_sources();
     void add_dataset_sources_header();
     void add_dataset_source_row(size_t row_index, const std::string& name, const std::string& type, const std::string& connection_info, const std::string& connection_status, bool checked = true);
-    void on_dataset_source_changed();
-    void on_training_images_refresh_clicked();
-    void on_test_images_refresh_clicked();
     void refresh_dataset_sources_options();
-    void refresh_image_category_options();
-    void populate_explorer_images_listbox(const std::vector<ImageInfo>& images, bool is_training_set);
-    void on_img_add_clicked(const ImageInfo& image_info);
-    void on_img_remove_clicked(const ImageInfo& image_info);
-    fs::path add_image_to_dataset(const fs::path& src_path, const std::string& category);
+    void populate_explorer_train_images_listbox();
+    void add_selected_images_to_train(std::map<Gtk::CheckButton*, std::string> selected_images);
+    void remove_selected_images_from_train(std::map<Gtk::CheckButton*, std::string> selected_images);
+    fs::path copy_image_to_dataset(const fs::path& src_path, const std::string& dataset_type, const std::string& category);
     void remove_image_from_dataset(const fs::path& img_path);
-    void load_image_to_explorer(const std::filesystem::path& image_path);
-    bool on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr);
-    int64_t generate_img_id();
+    void load_image_to_explorer(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area);
+    void move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type);
+    std::string generate_sha256(const std::string& input);
+    void populate_explorer_test_images_listbox(const std::vector<ImageInfo>& images);
+    void set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked);
 };
 
 #endif
