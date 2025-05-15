@@ -89,6 +89,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_training_step_labels.push_back(m_training_step3_lbl);
     }
 
+    m_builder->get_widget("training_step4_lbl", m_training_step4_lbl);
+    if (m_training_step4_lbl)
+    {
+        m_training_step_labels.push_back(m_training_step4_lbl);
+    }
+
     m_builder->get_widget("model_name_entry", m_model_name_entry);
 
     m_builder->get_widget("existing_models_cbox", m_existing_models_cbox);
@@ -643,6 +649,10 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
                     if (selected_img_category != category)
                         continue;
                     
+                    // Filter based on dataset type
+                    if (dataset_type != "train")
+                        continue;
+
                     images_from_training_set.emplace_back(ImageInfo {
                         img_id,
                         src_img_path,
@@ -916,13 +926,18 @@ void MainWindow::prepare_wip_training_dataset()
                     std::string img_name = fs::path(dest_img_path).filename();
                     std::string category = entry["category"];
                     std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
 
                     // Filter based on inclusion status
                     if (inclusion != "included")
                         continue;
 
-                    auto dataset_category_path = dataset_path / category;
+                    // Filter based on dataset type
+                    if (dataset_type != "train")
+                        continue;
 
+                    // Copy the image to the appropriate directory
+                    auto dataset_category_path = dataset_path / category;
                     fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
                 }
             }
@@ -1884,7 +1899,7 @@ void MainWindow::on_auto_split_clicked()
 
         for (auto& entry : images_json)
         {
-            if (entry["category"] == "Normal")
+            if (entry["category"] == "normal")
                 normal_images.push_back(entry);
             else
                 abnormal_images.push_back(entry);

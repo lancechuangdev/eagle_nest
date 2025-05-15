@@ -35,6 +35,7 @@ protected:
     Gtk::Label *m_training_step1_lbl;
     Gtk::Label *m_training_step2_lbl;
     Gtk::Label *m_training_step3_lbl;
+    Gtk::Label *m_training_step4_lbl;
     Gtk::Button *m_previous_btn;
     Gtk::Button *m_next_btn;
     Gtk::Button *m_close_training_wizard_btn;
@@ -129,7 +130,7 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
     int m_current_step = 0;
     std::string m_active_model_page = "page_model_welcome";
-    std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training"};
+    std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training", "page_testing"};
     std::vector<Gtk::Label*> m_training_step_labels;
     std::vector<Gtk::CheckButton*> m_datasources_checkboxes;
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
