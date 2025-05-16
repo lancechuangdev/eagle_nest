@@ -97,6 +97,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     }
 
     m_builder->get_widget("model_name_entry", m_model_name_entry);
+    if (m_model_name_entry)
+    {
+        m_model_name_entry->signal_changed().connect([this]() {
+            m_model_name = m_model_name_entry->get_text();
+        });
+    }
 
     m_builder->get_widget("existing_models_cbox", m_existing_models_cbox);
     if (m_existing_models_cbox)
@@ -113,7 +119,6 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     m_builder->get_widget("model_comment_tview", m_model_comment_tview);
         
     m_builder->get_widget("create_model_rbtn", m_create_model_rbtn);
-    
     m_builder->get_widget("select_model_rbtn", m_select_model_rbtn);
     if (m_create_model_rbtn && m_select_model_rbtn)
     {
@@ -123,6 +128,24 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             m_model_name_entry->set_sensitive(create_mode);
             m_existing_models_cbox->set_sensitive(!create_mode);
             m_model_version_cbox->set_sensitive(!create_mode);
+
+            if (create_mode)
+            {
+                m_model_name = m_model_name_entry->get_text();
+                m_model_version = "v1"; // Reset version to v1
+            }
+            else
+            {
+                m_model_name = m_existing_models_cbox->get_active_text();
+
+                // Increment the model version
+                std::string selected_version = m_model_version_cbox->get_active_text();
+                if (!selected_version.empty())
+                {
+                    int version_number = std::stoi(selected_version.substr(1));
+                    m_model_version = std::string("v") + std::to_string(version_number + 1);        
+                }
+            }
         };
 
         m_create_model_rbtn->signal_toggled().connect(update_ui_state);
@@ -516,6 +539,9 @@ void MainWindow::on_existing_model_selection_changed()
     if (selected_model.empty())
         return;
 
+    // Update the model name field
+    m_model_name = selected_model;
+
     // Clear the model version combo box
     m_model_version_cbox->remove_all();
 
@@ -542,7 +568,11 @@ void MainWindow::on_model_version_selection_changed()
     if (selected_model.empty() || selected_version.empty())
         return;
 
-    // Load the model readme file
+    // Increment the model version
+    int version_number = std::stoi(selected_version.substr(1));
+    m_model_version = std::string("v") + std::to_string(version_number + 1);    
+
+    // Load the model readme file and populate the comment text view
     auto model_path = AppPaths::Models_Path / selected_model / selected_version / "model.readme";
     if (fs::exists(model_path))
     {
@@ -588,17 +618,8 @@ void MainWindow::on_next_clicked()
         m_next_btn->set_sensitive(false);
 
         // Update the model name and version labels on Testing page
-        std::string model_name = m_model_name_entry->get_text();
-        std::string model_version = "v1";
-        if (m_select_model_rbtn->get_active())
-        {
-            model_name = m_existing_models_cbox->get_active_text();
-            std::string current_version = m_model_version_cbox->get_active_text();
-            int version_number = std::stoi(current_version.substr(1));
-            model_version = std::string("v") + std::to_string(version_number + 1); // increment version
-        }
-        m_model_under_test_lbl->set_text(model_name);
-        m_model_version_under_test_lbl->set_text(model_version);
+        m_model_under_test_lbl->set_text(m_model_name);
+        m_model_version_under_test_lbl->set_text(m_model_version);
     }
     update_step_indicator();
     transition_step(true);
@@ -907,26 +928,24 @@ void MainWindow::on_train_model_clicked()
 
     // Train model in a separate thread
     std::thread([this]() {
-        prepare_wip_dataset("train");
-        std::string model_name = m_model_name_entry->get_text();
-        std::string model_ckpt = "";
-        if (m_select_model_rbtn->get_active())
-        {
-            model_name = m_existing_models_cbox->get_active_text();
-            std::string current_version = m_model_version_cbox->get_active_text();
-            model_ckpt = AppPaths::Models_Path/model_name/current_version/"model.ckpt";
-        }
-        std::string model_size = m_model_size_cbox->get_active_id();
-        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
-
-        if (model_name.empty())
+        if (m_model_name.empty())
         {
             std::cerr << "Model name cannot be empty." << std::endl;
             return;
         }
-        
+
+        prepare_wip_dataset("train");
+        std::string model_size = m_model_size_cbox->get_active_id();
+        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
+        std::string model_ckpt = "";
+        if (m_select_model_rbtn->get_active())
+        {
+            std::string current_version = m_model_version_cbox->get_active_text();
+            model_ckpt = AppPaths::Models_Path/m_model_name/current_version/"model.ckpt";
+        }
+
         // hallelujah
-        run_train_efficient_ad_model_script(model_name, model_size, max_epochs, model_ckpt);
+        run_train_efficient_ad_model_script(m_model_name, model_size, max_epochs, model_ckpt);
         
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this]() {
@@ -1056,21 +1075,15 @@ void MainWindow::on_test_model_clicked()
     // Test model in a separate thread
     std::thread([this]() {
         prepare_wip_dataset("test");
-        std::string model_name = m_model_name_entry->get_text();
 
-        if (m_select_model_rbtn->get_active())
-        {
-            model_name = m_existing_models_cbox->get_active_text();
-        }
-
-        if (model_name.empty())
+        if (m_model_name.empty())
         {
             std::cerr << "Model name cannot be empty." << std::endl;
             return;
         }
 
-        std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"lightning"/"model.ckpt";
-        bool result = run_test_efficient_ad_model_script(model_name, model_ckpt);
+        std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+        bool result = run_test_efficient_ad_model_script(m_model_name, model_ckpt);
         std::vector<ImageInfo> images_from_testing_set;
 
         if (result) {
@@ -1286,29 +1299,19 @@ void MainWindow::on_save_model_clicked()
 
     // Save model in a separate thread
     std::thread([this]() {
-        std::string model_name = m_model_name_entry->get_text();
-        std::string model_version = "v1";
         std::string comment = m_model_comment_tview->get_buffer()->get_text();
         std::string model_size = m_model_size_cbox->get_active_id();
         int max_epochs = m_max_epochs_sbtn->get_value_as_int();
 
-        if (m_select_model_rbtn->get_active())
-        {
-            model_name = m_existing_models_cbox->get_active_text();
-            std::string current_version = m_model_version_cbox->get_active_text();
-            int version_number = std::stoi(current_version.substr(1));
-            model_version = std::string("v") + std::to_string(version_number + 1); // increment version
-        }
-
-        bool result = convert_efficient_ad_model_to_onnx(model_name);
+        bool result = convert_efficient_ad_model_to_onnx(m_model_name);
         if (result) {
-            write_model_readme(model_name, model_version, model_size, max_epochs, comment);
+            write_model_readme(m_model_name, m_model_version, model_size, max_epochs, comment);
 
             auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
-            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"lightning"/"model.ckpt";
-            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"onnx"/"model.onnx";
+            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"onnx"/"model.onnx";
             auto model_readme_path = AppPaths::WIP_Model_Path/"model.readme";
-            auto model_dest_path = AppPaths::Models_Path/model_name/model_version;
+            auto model_dest_path = AppPaths::Models_Path/m_model_name/m_model_version;
 
             // Create the model directory if it doesn't exist
             fs::create_directories(model_dest_path);

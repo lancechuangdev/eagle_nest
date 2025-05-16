@@ -159,6 +159,8 @@ private:
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_train_listbox;
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_test_listbox;
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_wizard_listbox;
+    std::string m_model_name;
+    std::string m_model_version = "v1"; // The version of the model to be created
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_train_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_img_pixbuf;
     double m_auroc_value = 0.0;
