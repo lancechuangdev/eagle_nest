@@ -670,7 +670,7 @@ void MainWindow::transition_step(bool step_forward)
     }
 }
 
-void MainWindow::write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment)
+void MainWindow::write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment, const double auroc_value, const double f1_value)
 {
     // Get current datetime in ISO 8601 format
     auto now = std::chrono::system_clock::now();
@@ -685,6 +685,8 @@ void MainWindow::write_model_readme(const std::string& name, const std::string& 
     readme_json["epochs"] = epochs;
     readme_json["comment"] = comment;
     readme_json["created_at"] = ss.str();
+    readme_json["auroc"] = auroc_value;
+    readme_json["f1_score"] = f1_value;
 
     fs::create_directories(AppPaths::WIP_Model_Path);
     std::ofstream out(AppPaths::WIP_Model_Path / "model.readme");
@@ -1305,7 +1307,7 @@ void MainWindow::on_save_model_clicked()
 
         bool result = convert_efficient_ad_model_to_onnx(m_model_name);
         if (result) {
-            write_model_readme(m_model_name, m_model_version, model_size, max_epochs, comment);
+            write_model_readme(m_model_name, m_model_version, model_size, max_epochs, comment, m_auroc_value, m_f1_value);
 
             auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
             auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";

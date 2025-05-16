@@ -170,7 +170,7 @@ private:
     void load_existing_models();
     void update_step_indicator();
     void transition_step(bool step_forward);
-    void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment);
+    void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment, const double auroc_value, const double f1_value);
     void populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images);
     void update_selected_images_inclusion(const std::string& inclusion);
     void prepare_wip_dataset(std::string dataset_type);
