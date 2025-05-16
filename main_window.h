@@ -52,7 +52,8 @@ protected:
     Gtk::ComboBoxText *m_training_wizard_img_included_cbox;
     Gtk::ComboBoxText *m_training_wizard_img_category_cbox;    
     Gtk::Button *m_training_wizard_image_refresh_btn;
-    Gtk::ListBox *m_training_wizard_images_lbox;
+    Gtk::DrawingArea *m_wizard_train_image_drawing_area;
+    Gtk::ListBox *m_wizard_train_images_lbox;
     Gtk::Button *m_toggle_all_on_wizard_btn;
     Gtk::Button *m_include_train_images_btn;
     Gtk::Button *m_exclude_train_images_btn;
@@ -62,6 +63,16 @@ protected:
     Gtk::SpinButton *m_max_epochs_sbtn;
     Gtk::Button *m_train_model_btn;
     Gtk::TextView *m_train_model_tview;
+
+    // Model Testing
+    Gtk::Label *m_model_under_test_lbl;
+    Gtk::Label *m_model_version_under_test_lbl;
+    Gtk::Button *m_test_model_btn;
+    Gtk::Label *m_area_under_roc_lbl;
+    Gtk::Label *m_f1_score_lbl;
+    Gtk::ListBox *m_wizard_test_images_lbox;
+    Gtk::DrawingArea *m_wizard_test_image_drawing_area;
+    Gtk::Button *m_save_model_btn;
 
     // Dataset Explorer Stack
     Gtk::Stack *m_explorer_stack;
@@ -104,12 +115,14 @@ protected:
     void on_model_version_selection_changed();
     void on_training_wizard_image_refresh_clicked();
     void on_train_model_clicked();
+    void on_test_model_clicked();
+    void on_save_model_clicked();
     void on_explorer_toggled();
     void on_dataset_source_changed();
     void on_train_images_refresh_clicked();
     void on_add_train_images_clicked();
     void on_remove_train_images_clicked();
-    bool on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area);
+    bool on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area);
     void on_auto_split_clicked();
     void on_test_images_refresh_clicked();
     void on_add_test_images_clicked();
@@ -146,16 +159,21 @@ private:
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_train_listbox;
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_test_listbox;
     std::map<Gtk::CheckButton*, std::string> m_selected_images_on_wizard_listbox;
+    Glib::RefPtr<Gdk::Pixbuf> m_wizard_train_img_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_img_pixbuf;
+    double m_auroc_value = 0.0;
+    double m_f1_value = 0.0;
 
     void set_window_title(const std::string &title);
     void load_existing_models();
     void update_step_indicator();
     void transition_step(bool step_forward);
     void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment);
-    void populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images);
+    void populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images);
     void update_selected_images_inclusion(const std::string& inclusion);
-    void prepare_wip_training_dataset();
+    void prepare_wip_dataset(std::string dataset_type);
     bool run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt);
+    bool run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_ckpt);
     bool convert_efficient_ad_model_to_onnx(const std::string& model_name);
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
@@ -168,11 +186,12 @@ private:
     void remove_selected_images_from_train(std::map<Gtk::CheckButton*, std::string> selected_images);
     fs::path copy_image_to_dataset(const fs::path& src_path, const std::string& dataset_type, const std::string& category);
     void remove_image_from_dataset(const fs::path& img_path);
-    void load_image_to_explorer(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area);
+    void load_image_to_drawing_area(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area);
     void move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type);
     std::string generate_sha256(const std::string& input);
     void populate_explorer_test_images_listbox(const std::vector<ImageInfo>& images);
     void set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked);
+    void populate_wizard_test_images_listbox(const std::vector<ImageInfo>& images);
 };
 
 #endif

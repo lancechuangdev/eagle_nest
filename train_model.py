@@ -21,7 +21,7 @@ def main(model_name: str, model_size: str = "medium", max_epochs: int = 100, res
     print("[Info] Initializing dataset...")
     datamodule = Folder(
         name=model_name,
-        root=Path("~/eagle_nest/wip/dataset").expanduser(),
+        root=Path("~/eagle_nest/wip/dataset/train").expanduser(),
         normal_dir="normal",
         abnormal_dir="abnormal",
         train_batch_size=1,

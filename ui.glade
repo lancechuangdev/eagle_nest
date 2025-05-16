@@ -620,7 +620,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkDrawingArea" id="training_wizard_image_drawing_area">
+                                  <object class="GtkDrawingArea" id="wizard_train_image_drawing_area">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                   </object>
@@ -943,7 +943,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                             <child>
-                              <object class="GtkButton">
+                              <object class="GtkButton" id="test_model_btn">
                                 <property name="label" translatable="yes">Start Testing</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
@@ -1004,7 +1004,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkComboBoxText" id="model_version_under_test_cbox">
+                              <object class="GtkLabel" id="model_version_under_test_lbl">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                               </object>
@@ -1032,7 +1032,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkDrawingArea">
+                                  <object class="GtkDrawingArea" id="wizard_test_image_drawing_area">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                   </object>
@@ -1058,9 +1058,10 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <child>
-                                  <object class="GtkListBox">
+                                  <object class="GtkListBox" id="wizard_test_images_lbox">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
+                                    <property name="selection-mode">none</property>
                                   </object>
                                 </child>
                               </object>

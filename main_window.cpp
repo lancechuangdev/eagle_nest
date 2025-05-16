@@ -6,6 +6,7 @@
 #include <fstream>
 #include <random>
 #include <openssl/sha.h>
+#include <regex>
 
 namespace fs = std::filesystem;
 using DatasetSource = MainWindow::DatasetSource;
@@ -143,7 +144,30 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_training_wizard_image_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_training_wizard_image_refresh_clicked));
     }
 
-    m_builder->get_widget("training_wizard_images_lbox", m_training_wizard_images_lbox);
+    m_builder->get_widget("wizard_train_image_drawing_area", m_wizard_train_image_drawing_area);
+    if (m_wizard_train_image_drawing_area)
+    {
+        m_wizard_train_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_image_draw(cr, m_wizard_train_img_pixbuf, m_wizard_train_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("training_wizard_images_lbox", m_wizard_train_images_lbox);
+    // Handle row selection
+    m_wizard_train_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                load_image_to_drawing_area(image_path, m_wizard_train_img_pixbuf, m_wizard_train_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+            }
+        }
+    });
 
     m_builder->get_widget("toggle_all_on_wizard_btn", m_toggle_all_on_wizard_btn);
     if (m_toggle_all_on_wizard_btn)
@@ -151,7 +175,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_toggle_all_on_wizard_btn->signal_clicked().connect([this]() {
             m_all_selected_on_wizard = !m_all_selected_on_wizard;
         
-            set_all_checkboxes(m_training_wizard_images_lbox, m_all_selected_on_wizard);
+            set_all_checkboxes(m_wizard_train_images_lbox, m_all_selected_on_wizard);
         
             // Update the button label
             m_toggle_all_on_wizard_btn->set_label(m_all_selected_on_wizard ? "Unselect All" : "Select All");
@@ -187,6 +211,51 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     }
 
     m_builder->get_widget("train_model_tview", m_train_model_tview);
+
+    m_builder->get_widget("model_under_test_lbl", m_model_under_test_lbl);
+
+    m_builder->get_widget("model_version_under_test_lbl", m_model_version_under_test_lbl);
+
+    m_builder->get_widget("test_model_btn", m_test_model_btn);
+    if (m_test_model_btn)
+    {
+        m_test_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_test_model_clicked));
+    }
+
+    m_builder->get_widget("area_under_roc_lbl", m_area_under_roc_lbl);
+
+    m_builder->get_widget("f1_score_lbl", m_f1_score_lbl);
+
+    m_builder->get_widget("wizard_test_images_lbox", m_wizard_test_images_lbox);
+    // Handle row selection
+    m_wizard_test_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                load_image_to_drawing_area(image_path, m_wizard_test_img_pixbuf, m_wizard_test_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+            }
+        }
+    });
+
+    m_builder->get_widget("wizard_test_image_drawing_area", m_wizard_test_image_drawing_area);
+    if (m_wizard_test_image_drawing_area)
+    {
+        m_wizard_test_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_image_draw(cr, m_wizard_test_img_pixbuf, m_wizard_test_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("save_model_btn", m_save_model_btn);
+    if (m_save_model_btn)
+    {
+        m_save_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_save_model_clicked));
+    }
 
     m_builder->get_widget("explorer_stack", m_explorer_stack);
 
@@ -237,7 +306,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_explorer(image_path, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+                load_image_to_drawing_area(image_path, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
                 std::cout << "Row activated for image: " << image_path.string() << std::endl;
             }
         }
@@ -248,7 +317,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_explorer_train_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_explorer_image_draw(cr, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+                return on_image_draw(cr, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
             }
         );
     }
@@ -305,7 +374,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_explorer(image_path, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                load_image_to_drawing_area(image_path, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
                 std::cout << "Row activated for image: " << image_path.string() << std::endl;
             }
         }
@@ -316,7 +385,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_explorer_test_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_explorer_image_draw(cr, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                return on_image_draw(cr, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
             }
         );
     }
@@ -517,6 +586,19 @@ void MainWindow::on_next_clicked()
     }
     if (m_current_step == m_training_page_names.size() - 1) {
         m_next_btn->set_sensitive(false);
+
+        // Update the model name and version labels on Testing page
+        std::string model_name = m_model_name_entry->get_text();
+        std::string model_version = "v1";
+        if (m_select_model_rbtn->get_active())
+        {
+            model_name = m_existing_models_cbox->get_active_text();
+            std::string current_version = m_model_version_cbox->get_active_text();
+            int version_number = std::stoi(current_version.substr(1));
+            model_version = std::string("v") + std::to_string(version_number + 1); // increment version
+        }
+        m_model_under_test_lbl->set_text(model_name);
+        m_model_version_under_test_lbl->set_text(model_version);
     }
     update_step_indicator();
     transition_step(true);
@@ -673,19 +755,19 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
 
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set)]() {
-            populate_training_wizard_images_listbox(imgs);
+            populate_wizard_train_images_listbox(imgs);
             m_toggle_all_on_wizard_btn->set_label("Select All");
             m_training_wizard_image_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
 }
 
-void MainWindow::populate_training_wizard_images_listbox(const std::vector<ImageInfo>& images)
+void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images)
 {
     // clear previous rows
-    for (auto* child : m_training_wizard_images_lbox->get_children())
+    for (auto* child : m_wizard_train_images_lbox->get_children())
     {
-        m_training_wizard_images_lbox->remove(*child);
+        m_wizard_train_images_lbox->remove(*child);
     }
 
     // add one row per image
@@ -773,9 +855,9 @@ void MainWindow::populate_training_wizard_images_listbox(const std::vector<Image
         row->set_data("image_path", new fs::path(info.src_img_path));
 
         // Add the row to the listbox
-        m_training_wizard_images_lbox->append(*row);
+        m_wizard_train_images_lbox->append(*row);
     }
-    m_training_wizard_images_lbox->show_all_children();
+    m_wizard_train_images_lbox->show_all_children();
 }
 
 void MainWindow::update_selected_images_inclusion(const std::string& inclusion)
@@ -823,21 +905,17 @@ void MainWindow::on_train_model_clicked()
     // Disable the button to prevent multiple clicks
     m_train_model_btn->set_sensitive(false);
 
-    // Load images in a separate thread
+    // Train model in a separate thread
     std::thread([this]() {
-        // prepare_wip_training_dataset();
+        prepare_wip_dataset("train");
         std::string model_name = m_model_name_entry->get_text();
-        std::string model_version = "v1";
         std::string model_ckpt = "";
         if (m_select_model_rbtn->get_active())
         {
             model_name = m_existing_models_cbox->get_active_text();
             std::string current_version = m_model_version_cbox->get_active_text();
             model_ckpt = AppPaths::Models_Path/model_name/current_version/"model.ckpt";
-            int version_number = std::stoi(current_version.substr(1));
-            model_version = std::string("v") + std::to_string(version_number + 1); // increment version
         }
-        std::string comment = m_model_comment_tview->get_buffer()->get_text();
         std::string model_size = m_model_size_cbox->get_active_id();
         int max_epochs = m_max_epochs_sbtn->get_value_as_int();
 
@@ -848,28 +926,8 @@ void MainWindow::on_train_model_clicked()
         }
         
         // hallelujah
-        bool result = run_train_efficient_ad_model_script(model_name, model_size, max_epochs, model_ckpt); // Example parameters
-        if (result) {
-            result = convert_efficient_ad_model_to_onnx(model_name);
-        }
-        if (result) {
-            write_model_readme(model_name, model_version, model_size, max_epochs, comment);
-
-            auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
-            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"lightning"/"model.ckpt";
-            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"onnx"/"model.onnx";
-            auto model_readme_path = AppPaths::WIP_Model_Path/"model.readme";
-            auto model_dest_path = AppPaths::Models_Path/model_name/model_version;
-
-            // Create the model directory if it doesn't exist
-            fs::create_directories(model_dest_path);
-            // Copy the dataset.json to AppPaths::Models_Path
-            fs::copy(dataset_path, model_dest_path/"dataset.json", fs::copy_options::overwrite_existing);
-            // Copy the model files to AppPaths::Models_Path
-            fs::copy(model_ckpt_path, model_dest_path/"model.ckpt", fs::copy_options::overwrite_existing);
-            fs::copy(model_onnx_path, model_dest_path/"model.onnx", fs::copy_options::overwrite_existing);
-            fs::copy(model_readme_path, model_dest_path/"model.readme", fs::copy_options::overwrite_existing);
-        }
+        run_train_efficient_ad_model_script(model_name, model_size, max_epochs, model_ckpt);
+        
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this]() {
             m_train_model_btn->set_sensitive(true);
@@ -877,11 +935,11 @@ void MainWindow::on_train_model_clicked()
     }).detach(); // Detach the thread to allow it to run independently
 }
 
-void MainWindow::prepare_wip_training_dataset()
+void MainWindow::prepare_wip_dataset(std::string dataset_type)
 {
     try
     {
-        auto dataset_path = AppPaths::WIP_Dataset_Path;
+        auto dataset_path = AppPaths::WIP_Dataset_Path / dataset_type;
         auto normal_dataset_path = dataset_path / "normal";
         auto abnormal_dataset_path = dataset_path / "abnormal";
 
@@ -901,10 +959,10 @@ void MainWindow::prepare_wip_training_dataset()
 
         // Load existing JSON
         // Copy the image from training set to the WIP directory
-        auto dataset_json = dataset_path / "dataset.json";
+        auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
         if (!fs::exists(dataset_json))
         {
-            std::cerr << "dataset.json does not exist" << std::endl;
+            std::cerr << dataset_json << " does not exist" << std::endl;
         }
         else
         {
@@ -929,11 +987,11 @@ void MainWindow::prepare_wip_training_dataset()
                     std::string dataset_type = entry["dataset_type"];
 
                     // Filter based on inclusion status
-                    if (inclusion != "included")
+                    if (inclusion != "Included")
                         continue;
 
                     // Filter based on dataset type
-                    if (dataset_type != "train")
+                    if (dataset_type != dataset_type)
                         continue;
 
                     // Copy the image to the appropriate directory
@@ -988,6 +1046,285 @@ bool MainWindow::run_train_efficient_ad_model_script(const std::string& model_na
     }
 
     return exit_code == 0; // Return true if the script executed successfully
+}
+
+void MainWindow::on_test_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_test_model_btn->set_sensitive(false);
+
+    // Test model in a separate thread
+    std::thread([this]() {
+        prepare_wip_dataset("test");
+        std::string model_name = m_model_name_entry->get_text();
+
+        if (m_select_model_rbtn->get_active())
+        {
+            model_name = m_existing_models_cbox->get_active_text();
+        }
+
+        if (model_name.empty())
+        {
+            std::cerr << "Model name cannot be empty." << std::endl;
+            return;
+        }
+
+        std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+        bool result = run_test_efficient_ad_model_script(model_name, model_ckpt);
+        std::vector<ImageInfo> images_from_testing_set;
+
+        if (result) {
+            auto dataset_dir = AppPaths::WIP_Dataset_Path;
+            auto dest_json = dataset_dir / "dataset.json";
+
+            // Ensure the dataset directory exists
+            if (!fs::exists(dataset_dir))
+            {
+                fs::create_directories(dataset_dir);
+            }
+
+            // If dest_json does not exist, copy it from the source
+            if (!fs::exists(dest_json))
+            {
+                auto source_json = AppPaths::Dataset_Path / "dataset.json";
+                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
+            }
+
+            // Load existing JSON from destination
+            std::ifstream ifs(dest_json);
+
+            if (!ifs)
+            {
+                std::cerr << "Failed to open dataset.json" << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    std::string img_id = entry["img_id"];
+                    std::string src_img_path = entry["src_img_path"];
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string source_name = entry["source_name"];
+                    std::string source_type = entry["source_type"];
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
+                    
+                    // Filter based on dataset type
+                    if (dataset_type != "test")
+                        continue;
+
+                    images_from_testing_set.emplace_back(ImageInfo {
+                        img_id,
+                        src_img_path,
+                        dest_img_path,
+                        source_name,
+                        source_type,
+                        category,
+                        inclusion,
+                        dataset_type
+                    });
+                }
+            }
+        }
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, result, imgs = std::move(images_from_testing_set)]() {
+            m_test_model_btn->set_sensitive(true);
+            if (result)
+            {
+                m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
+                m_f1_score_lbl->set_text(std::to_string(m_f1_value));
+                populate_wizard_test_images_listbox(imgs);
+            }
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+bool MainWindow::run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_ckpt)
+{
+    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
+    std::array<char, 256> buffer_line;
+
+    fs::path script_path = AppPaths::WIP_Path / "test_model.py";
+    std::string cmd =
+        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
+        "conda activate eagle_nest && "
+        "python \"" + script_path.string() + "\" " + model_name + " " + model_ckpt +
+        " 2>&1'";  // <-- This redirects stderr to stdout;
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        buffer->insert(buffer->end(), "Failed to start script.\n");
+        return false;
+    }
+
+    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
+        std::string line(buffer_line.data());
+
+        // Extract AUROC and F1 Score values using regex
+        std::smatch match;
+        if (std::regex_search(line, match, std::regex("AUROC:\\s*([0-9.]+)"))) {
+            m_auroc_value = std::stod(match[1].str());  // Convert to double
+        } else if (std::regex_search(line, match, std::regex("F1 Score:\\s*([0-9.]+)"))) {
+            m_f1_value = std::stod(match[1].str());     // Convert to double
+        }
+
+        Glib::signal_idle().connect_once([buffer, line]() {
+            buffer->insert(buffer->end(), line);
+        });
+    }
+
+    int status = pclose(pipe); // Blocks until script finishes
+    int exit_code = 1;
+
+    if (WIFEXITED(status)) {
+        exit_code = WEXITSTATUS(status);
+        if (exit_code != 0) {
+            buffer->insert(buffer->end(), "\nTesting failed with exit code: " + std::to_string(exit_code) + "\n");
+        }
+    } else {
+        buffer->insert(buffer->end(), "\nTesting process did not exit normally.\n");
+    }
+
+    return exit_code == 0; // Return true if the script executed successfully
+}
+
+void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImageInfo>& images)
+{
+    // clear previous rows
+    for (auto* child : m_wizard_test_images_lbox->get_children())
+    {
+        m_wizard_test_images_lbox->remove(*child);
+    }
+
+    // add one row per image
+    for (const auto& info : images)
+    {
+        auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: filename label + "Info" button
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
+
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto btn = Gtk::make_managed<Gtk::Button>("Info");
+        btn->set_valign(Gtk::ALIGN_CENTER);
+        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        btn->signal_clicked().connect([revealer]() {
+            revealer->set_reveal_child(!revealer->get_reveal_child());
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
+
+        // Store the path as custom data
+        row->set_data("image_path", new fs::path(info.src_img_path));
+
+        // Add the row to the listbox
+        m_wizard_test_images_lbox->append(*row);
+    }
+    m_wizard_test_images_lbox->show_all_children();
+}
+
+void MainWindow::on_save_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_save_model_btn->set_sensitive(false);
+
+    // Save model in a separate thread
+    std::thread([this]() {
+        std::string model_name = m_model_name_entry->get_text();
+        std::string model_version = "v1";
+        std::string comment = m_model_comment_tview->get_buffer()->get_text();
+        std::string model_size = m_model_size_cbox->get_active_id();
+        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
+
+        if (m_select_model_rbtn->get_active())
+        {
+            model_name = m_existing_models_cbox->get_active_text();
+            std::string current_version = m_model_version_cbox->get_active_text();
+            int version_number = std::stoi(current_version.substr(1));
+            model_version = std::string("v") + std::to_string(version_number + 1); // increment version
+        }
+
+        bool result = convert_efficient_ad_model_to_onnx(model_name);
+        if (result) {
+            write_model_readme(model_name, model_version, model_size, max_epochs, comment);
+
+            auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
+            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/model_name/"latest"/"weights"/"onnx"/"model.onnx";
+            auto model_readme_path = AppPaths::WIP_Model_Path/"model.readme";
+            auto model_dest_path = AppPaths::Models_Path/model_name/model_version;
+
+            // Create the model directory if it doesn't exist
+            fs::create_directories(model_dest_path);
+            // Copy the dataset.json to AppPaths::Models_Path
+            fs::copy(dataset_path, model_dest_path/"dataset.json", fs::copy_options::overwrite_existing);
+            // Copy the model files to AppPaths::Models_Path
+            fs::copy(model_ckpt_path, model_dest_path/"model.ckpt", fs::copy_options::overwrite_existing);
+            fs::copy(model_onnx_path, model_dest_path/"model.onnx", fs::copy_options::overwrite_existing);
+            fs::copy(model_readme_path, model_dest_path/"model.readme", fs::copy_options::overwrite_existing);
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_save_model_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
 }
 
 bool MainWindow::convert_efficient_ad_model_to_onnx(const std::string& model_name)
@@ -1797,7 +2134,7 @@ void MainWindow::remove_image_from_dataset(const fs::path& img_path)
     }
 }
 
-void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area)
+void MainWindow::load_image_to_drawing_area(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area)
 {
     try
     {
@@ -1813,7 +2150,7 @@ void MainWindow::load_image_to_explorer(const std::filesystem::path& image_path,
     }
 }
 
-bool MainWindow::on_explorer_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area)
+bool MainWindow::on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area)
 {
     if (pixbuf)
     {
