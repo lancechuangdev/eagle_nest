@@ -1183,9 +1183,10 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkSwitch">
+                              <object class="GtkSwitch" id="wizard_show_anomaly_heatmap_switch">
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
+                                <property name="active">True</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -1199,7 +1200,7 @@ If your images don't meet this requirement, you can resize them using Toolkit â†
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <property name="margin-end">5</property>
-                                <property name="label" translatable="yes">Hide Anomaly Map:</property>
+                                <property name="label" translatable="yes">Show Anomaly Heatmap:</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>

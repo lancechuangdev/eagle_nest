@@ -172,7 +172,10 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_wizard_train_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_image_draw(cr, m_wizard_train_img_pixbuf, m_wizard_train_image_drawing_area);
+                return on_image_draw(cr, 
+                    m_wizard_train_img_pixbuf, 
+                    Glib::RefPtr<Gdk::Pixbuf>(), 
+                    m_wizard_train_image_drawing_area);
             }
         );
     }
@@ -186,8 +189,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path, m_wizard_train_img_pixbuf, m_wizard_train_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+                load_image_to_drawing_area(image_path.string(), m_wizard_train_img_pixbuf, m_wizard_train_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path << std::endl;
             }
         }
     });
@@ -258,8 +261,14 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path, m_wizard_test_img_pixbuf, m_wizard_test_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+                load_image_and_heatmap_to_drawing_area(
+                    image_path.string(),
+                    m_image_to_heatmap_map[image_path.string()].first,
+                    m_wizard_test_img_pixbuf,
+                    m_wizard_test_heatmap_pixbuf,
+                    m_wizard_test_image_drawing_area
+                );
+                std::cout << "Row activated for image: " << image_path << std::endl;
             }
         }
     });
@@ -269,9 +278,22 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_wizard_test_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_image_draw(cr, m_wizard_test_img_pixbuf, m_wizard_test_image_drawing_area);
+                return on_image_draw(cr, 
+                    m_wizard_test_img_pixbuf, 
+                    m_wizard_show_heatmap ? m_wizard_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
+                    m_wizard_test_image_drawing_area, 
+                    0.5f);
             }
         );
+    }
+
+    m_builder->get_widget("wizard_show_anomaly_heatmap_switch", m_wizard_show_anomaly_heatmap_switch);
+    if (m_wizard_show_anomaly_heatmap_switch)
+    {
+        m_wizard_show_anomaly_heatmap_switch->property_active().signal_changed().connect([this]() {
+            m_wizard_show_heatmap = m_wizard_show_anomaly_heatmap_switch->get_active();
+            m_wizard_test_image_drawing_area->queue_draw();
+        });
     }
 
     m_builder->get_widget("save_model_btn", m_save_model_btn);
@@ -329,8 +351,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+                load_image_to_drawing_area(image_path.string(), m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path << std::endl;
             }
         }
     });
@@ -340,7 +362,10 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_explorer_train_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_image_draw(cr, m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+                return on_image_draw(cr, 
+                    m_explorer_train_img_pixbuf, 
+                    Glib::RefPtr<Gdk::Pixbuf>(),
+                    m_explorer_train_image_drawing_area);
             }
         );
     }
@@ -397,8 +422,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             if (path_ptr)
             {
                 const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path.string() << std::endl;
+                load_image_to_drawing_area(image_path.string(), m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path << std::endl;
             }
         }
     });
@@ -408,7 +433,10 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
     {
         m_explorer_test_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
-                return on_image_draw(cr, m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                return on_image_draw(cr, 
+                    m_explorer_test_img_pixbuf, 
+                    Glib::RefPtr<Gdk::Pixbuf>(),
+                    m_explorer_test_image_drawing_area);
             }
         );
     }
@@ -875,7 +903,7 @@ void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInf
         row->add(*vbox);
 
         // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.src_img_path));
+        row->set_data("image_path", new fs::path(info.dest_img_path));
 
         // Add the row to the listbox
         m_wizard_train_images_lbox->append(*row);
@@ -1005,14 +1033,14 @@ void MainWindow::prepare_wip_dataset(std::string dataset_type)
                     std::string img_name = fs::path(dest_img_path).filename();
                     std::string category = entry["category"];
                     std::string inclusion = entry["inclusion"];
-                    std::string dataset_type = entry["dataset_type"];
+                    std::string entry_dataset_type = entry["dataset_type"];
 
                     // Filter based on inclusion status
                     if (inclusion != "Included")
                         continue;
 
                     // Filter based on dataset type
-                    if (dataset_type != dataset_type)
+                    if (entry_dataset_type != dataset_type)
                         continue;
 
                     // Copy the image to the appropriate directory
@@ -1076,8 +1104,6 @@ void MainWindow::on_test_model_clicked()
 
     // Test model in a separate thread
     std::thread([this]() {
-        prepare_wip_dataset("test");
-
         if (m_model_name.empty())
         {
             std::cerr << "Model name cannot be empty." << std::endl;
@@ -1086,7 +1112,14 @@ void MainWindow::on_test_model_clicked()
 
         std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
         bool result = run_test_efficient_ad_model_script(m_model_name, model_ckpt);
-        std::vector<ImageInfo> images_from_testing_set;
+        std::vector<ImagePrediction> images_from_testing_set;
+
+        if (result) {
+            auto wip_testset_dir = AppPaths::WIP_Dataset_Path / "test";
+            auto dest_json = wip_testset_dir / "pred_results.json";
+
+            load_prediction_results(dest_json.string());
+        }
 
         if (result) {
             auto dataset_dir = AppPaths::WIP_Dataset_Path;
@@ -1128,12 +1161,19 @@ void MainWindow::on_test_model_clicked()
                     std::string category = entry["category"];
                     std::string inclusion = entry["inclusion"];
                     std::string dataset_type = entry["dataset_type"];
-                    
+                    const auto& heatmap_info = m_image_to_heatmap_map[dest_img_path];
+                    std::string heatmap_path = heatmap_info.first;
+                    float anomaly_score = heatmap_info.second;
+
                     // Filter based on dataset type
                     if (dataset_type != "test")
                         continue;
 
-                    images_from_testing_set.emplace_back(ImageInfo {
+                    // Filter based on inclusion
+                    if (inclusion != "Included")
+                        continue;
+
+                    images_from_testing_set.emplace_back(ImagePrediction {
                         img_id,
                         src_img_path,
                         dest_img_path,
@@ -1141,11 +1181,14 @@ void MainWindow::on_test_model_clicked()
                         source_type,
                         category,
                         inclusion,
-                        dataset_type
+                        dataset_type,
+                        heatmap_path,
+                        anomaly_score
                     });
                 }
             }
         }
+
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this, result, imgs = std::move(images_from_testing_set)]() {
             m_test_model_btn->set_sensitive(true);
@@ -1184,8 +1227,10 @@ bool MainWindow::run_test_efficient_ad_model_script(const std::string& model_nam
         std::smatch match;
         if (std::regex_search(line, match, std::regex("AUROC:\\s*([0-9.]+)"))) {
             m_auroc_value = std::stod(match[1].str());  // Convert to double
+            m_auroc_value = std::round(m_auroc_value * 1000.0) / 1000.0; // Round to 3 decimal places
         } else if (std::regex_search(line, match, std::regex("F1 Score:\\s*([0-9.]+)"))) {
             m_f1_value = std::stod(match[1].str());     // Convert to double
+            m_f1_value = std::round(m_f1_value * 1000.0) / 1000.0; // Round to 3 decimal places
         }
 
         Glib::signal_idle().connect_once([buffer, line]() {
@@ -1208,7 +1253,7 @@ bool MainWindow::run_test_efficient_ad_model_script(const std::string& model_nam
     return exit_code == 0; // Return true if the script executed successfully
 }
 
-void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImageInfo>& images)
+void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImagePrediction>& images)
 {
     // clear previous rows
     for (auto* child : m_wizard_test_images_lbox->get_children())
@@ -1255,6 +1300,9 @@ void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImageInfo
         img_path_label->set_max_width_chars(40); // Limit display width
         img_path_label->set_tooltip_text(info.dest_img_path.string());
         img_path_label->set_xalign(0); // Align left
+        auto anomaly_score_label = Gtk::make_managed<Gtk::Label>("Anomaly Score" + std::string(": ") + std::to_string(info.anomaly_score));
+        anomaly_score_label->set_xalign(0);
+        details_box->pack_start(*anomaly_score_label, Gtk::PACK_SHRINK);
         details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
         details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
         details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
@@ -1286,12 +1334,31 @@ void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImageInfo
         row->add(*vbox);
 
         // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.src_img_path));
+        row->set_data("image_path", new fs::path(info.dest_img_path));
 
         // Add the row to the listbox
         m_wizard_test_images_lbox->append(*row);
     }
     m_wizard_test_images_lbox->show_all_children();
+}
+
+void MainWindow::load_prediction_results(const std::string& json_path) {
+    m_image_to_heatmap_map.clear();
+    std::ifstream ifs(json_path);
+    if (!ifs) {
+        std::cerr << "Failed to open pred_results.json at " << json_path << std::endl;
+        return;
+    }
+
+    nlohmann::json results;
+    ifs >> results;
+
+    for (const auto& entry : results) {
+        std::string img_path = entry["input_image"];
+        std::string heatmap_path = entry["anomaly_heatmap"];
+        float anomaly_score = entry["anomaly_score"];
+        m_image_to_heatmap_map[img_path] = {heatmap_path, anomaly_score};
+    }
 }
 
 void MainWindow::on_save_model_clicked()
@@ -2139,11 +2206,11 @@ void MainWindow::remove_image_from_dataset(const fs::path& img_path)
     }
 }
 
-void MainWindow::load_image_to_drawing_area(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area)
+void MainWindow::load_image_to_drawing_area(const std::string& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area)
 {
     try
     {
-        pixbuf = Gdk::Pixbuf::create_from_file(image_path.string());
+        pixbuf = Gdk::Pixbuf::create_from_file(image_path);
         if (target_drawing_area)
         {
             target_drawing_area->queue_draw(); // force redraw
@@ -2155,30 +2222,84 @@ void MainWindow::load_image_to_drawing_area(const std::filesystem::path& image_p
     }
 }
 
-bool MainWindow::on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area)
+bool MainWindow::on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr,
+    Glib::RefPtr<Gdk::Pixbuf> base_pixbuf,
+    Glib::RefPtr<Gdk::Pixbuf> overlay_pixbuf,
+    Gtk::DrawingArea* area,
+    double overlay_alpha)
 {
-    if (pixbuf)
-    {
-        // Scale the image to fit the drawing area
-        auto allocation = area->get_allocation();
-        int area_width = allocation.get_width();
-        int area_height = allocation.get_height();
+    if (!base_pixbuf || !area)
+    return true;
 
-        // Calculate scale ratio
-        double scale_x = static_cast<double>(area_width) / pixbuf->get_width();
-        double scale_y = static_cast<double>(area_height) / pixbuf->get_height();
-        double scale = std::min(scale_x, scale_y);
+    auto allocation = area->get_allocation();
+    const int area_w = allocation.get_width();
+    const int area_h = allocation.get_height();
+
+    // Use base image size
+    const int img_w = base_pixbuf->get_width();
+    const int img_h = base_pixbuf->get_height();
+
+    double scale_x = static_cast<double>(area_w) / img_w;
+    double scale_y = static_cast<double>(area_h) / img_h;
+    double scale = std::min(scale_x, scale_y);
+
+    // Centering offset
+    double dx = (area_w  - img_w * scale) * 0.5;
+    double dy = (area_h - img_h * scale) * 0.5;
+
+    auto draw_scaled_pixbuf = [&](Glib::RefPtr<Gdk::Pixbuf> pixbuf, double alpha) {
+        if (!pixbuf) return;
 
         cr->save();
+        cr->translate(dx, dy);
         cr->scale(scale, scale);
+
         Gdk::Cairo::set_source_pixbuf(cr, pixbuf, 0, 0);
-        cr->paint();
+        if (alpha < 1.0) {
+            cr->paint_with_alpha(alpha);
+        } else {
+            cr->paint();
+        }
+
         cr->restore();
+    };
+
+    // Draw base image
+    draw_scaled_pixbuf(base_pixbuf, 1.0);
+
+    // Draw overlay if available
+    if (overlay_pixbuf) {
+        draw_scaled_pixbuf(overlay_pixbuf, overlay_alpha);
     }
 
     return true;
 }
 
+
+void MainWindow::load_image_and_heatmap_to_drawing_area(
+    const std::string& image_path,
+    const std::string& heatmap_path,
+    Glib::RefPtr<Gdk::Pixbuf>& image_pixbuf,
+    Glib::RefPtr<Gdk::Pixbuf>& heatmap_pixbuf,
+    Gtk::DrawingArea* target_drawing_area)
+{
+    try {
+        image_pixbuf = Gdk::Pixbuf::create_from_file(image_path);
+
+        if (!heatmap_path.empty() && std::filesystem::exists(heatmap_path)) {
+            heatmap_pixbuf = Gdk::Pixbuf::create_from_file(heatmap_path)
+                ->scale_simple(image_pixbuf->get_width(), image_pixbuf->get_height(), Gdk::INTERP_BILINEAR);
+        } else {
+            heatmap_pixbuf.reset();  // Clear
+        }
+
+        if (target_drawing_area) {
+            target_drawing_area->queue_draw();
+        }
+    } catch (const Glib::Error& ex) {
+        std::cerr << "Error loading image or heatmap: " << ex.what() << std::endl;
+    }
+}
 
 std::string MainWindow::generate_sha256(const std::string& input)
 {
@@ -2190,19 +2311,6 @@ std::string MainWindow::generate_sha256(const std::string& input)
         result << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     return result.str();
 }
-
-// int64_t MainWindow::generate_img_id()
-// {
-//     auto now = std::chrono::high_resolution_clock::now();
-//     auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
-//         now.time_since_epoch()).count();
-
-//     std::random_device rd;
-//     std::mt19937 gen(rd());
-//     std::uniform_int_distribution<int64_t> dis(0, 999);
-
-//     return milliseconds * 1000 + dis(gen); // Adds 0–999 jitter
-// }
 
 void MainWindow::on_auto_split_clicked()
 {

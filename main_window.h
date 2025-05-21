@@ -72,6 +72,7 @@ protected:
     Gtk::Label *m_f1_score_lbl;
     Gtk::ListBox *m_wizard_test_images_lbox;
     Gtk::DrawingArea *m_wizard_test_image_drawing_area;
+    Gtk::Switch *m_wizard_show_anomaly_heatmap_switch;
     Gtk::Button *m_save_model_btn;
 
     // Dataset Explorer Stack
@@ -122,7 +123,11 @@ protected:
     void on_train_images_refresh_clicked();
     void on_add_train_images_clicked();
     void on_remove_train_images_clicked();
-    bool on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr, Glib::RefPtr<Gdk::Pixbuf> pixbuf, Gtk::DrawingArea* area);
+    bool on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr,
+        Glib::RefPtr<Gdk::Pixbuf> base_pixbuf,
+        Glib::RefPtr<Gdk::Pixbuf> overlay_pixbuf,
+        Gtk::DrawingArea* area,
+        double overlay_alpha = 0.5f);
     void on_auto_split_clicked();
     void on_test_images_refresh_clicked();
     void on_add_test_images_clicked();
@@ -140,6 +145,11 @@ private:
         std::string dataset_type; // Type of dataset (e.g., "train", "test")
     };
 
+    struct ImagePrediction : public ImageInfo {
+        fs::path heatmap_path;      // Path to the anomaly heatmap image
+        float anomaly_score = 0.0f; // Anomaly score from the model
+    };
+    
     Glib::RefPtr<Gtk::Builder> m_builder;
     int m_current_step = 0;
     std::string m_active_model_page = "page_model_welcome";
@@ -163,6 +173,9 @@ private:
     std::string m_model_version = "v1"; // The version of the model to be created
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_train_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_img_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_heatmap_pixbuf;
+    bool m_wizard_show_heatmap = true;
+    std::unordered_map<std::string, std::pair<std::string, float>> m_image_to_heatmap_map;
     double m_auroc_value = 0.0;
     double m_f1_value = 0.0;
 
@@ -188,12 +201,19 @@ private:
     void remove_selected_images_from_train(std::map<Gtk::CheckButton*, std::string> selected_images);
     fs::path copy_image_to_dataset(const fs::path& src_path, const std::string& dataset_type, const std::string& category);
     void remove_image_from_dataset(const fs::path& img_path);
-    void load_image_to_drawing_area(const std::filesystem::path& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area);
+    void load_image_to_drawing_area(const std::string& image_path, Glib::RefPtr<Gdk::Pixbuf>& pixbuf, Gtk::DrawingArea* target_drawing_area);
+    void load_image_and_heatmap_to_drawing_area(
+        const std::string& image_path,
+        const std::string& heatmap_path,
+        Glib::RefPtr<Gdk::Pixbuf>& image_pixbuf,
+        Glib::RefPtr<Gdk::Pixbuf>& heatmap_pixbuf,
+        Gtk::DrawingArea* target_drawing_area);
+    void load_prediction_results(const std::string& json_path);
     void move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type);
     std::string generate_sha256(const std::string& input);
     void populate_explorer_test_images_listbox(const std::vector<ImageInfo>& images);
     void set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked);
-    void populate_wizard_test_images_listbox(const std::vector<ImageInfo>& images);
+    void populate_wizard_test_images_listbox(const std::vector<ImagePrediction>& images);
 };
 
 #endif
