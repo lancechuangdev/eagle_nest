@@ -302,7 +302,15 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         });
     }
 
-    m_builder->get_widget("wizard_anomaly_score_distr_img_widget", m_wizard_anomaly_score_dist_img_widget);
+    m_builder->get_widget("wizard_anomaly_score_dist_img_widget", m_wizard_anomaly_score_dist_img_widget);
+
+    m_builder->get_widget("model_name_to_save_lbl", m_model_name_to_save_lbl);
+
+    m_builder->get_widget("model_version_to_save_lbl", m_model_version_to_save_lbl);
+
+    m_builder->get_widget("model_size_to_save_lbl", m_model_size_to_save_lbl);
+
+    m_builder->get_widget("model_comment_to_save_tview", m_model_comment_to_save_tview);
 
     m_builder->get_widget("save_model_btn", m_save_model_btn);
     if (m_save_model_btn)
@@ -695,7 +703,10 @@ void MainWindow::transition_step(bool step_forward)
         }
         else if (m_current_step == 4) // Step 3 (Testing) to Step 4 (Save Model)
         {
-
+            m_model_name_to_save_lbl->set_text(m_model_name);
+            m_model_version_to_save_lbl->set_text(m_model_version);
+            m_model_size_to_save_lbl->set_text(m_model_size);
+            m_model_comment_to_save_tview->get_buffer()->set_text(m_model_comment_tview->get_buffer()->get_text());
         }
     }
     else // This function is triggered by the previous button
@@ -982,7 +993,7 @@ void MainWindow::on_train_model_clicked()
         }
 
         prepare_wip_dataset("train");
-        std::string model_size = m_model_size_cbox->get_active_id();
+        m_model_size = m_model_size_cbox->get_active_id();
         int max_epochs = m_max_epochs_sbtn->get_value_as_int();
         std::string model_ckpt = "";
         if (m_select_model_rbtn->get_active())
@@ -992,7 +1003,7 @@ void MainWindow::on_train_model_clicked()
         }
 
         // hallelujah
-        run_train_efficient_ad_model_script(m_model_name, model_size, max_epochs, model_ckpt);
+        run_train_efficient_ad_model_script(m_model_name, m_model_size, max_epochs, model_ckpt);
         
         // Once done, update the button in the UI thread
         Glib::signal_idle().connect_once([this]() {
