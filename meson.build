@@ -24,6 +24,6 @@ resource_target = gnome.compile_resources(
 # -------------------------------
 
 executable('en', 
-    [resource_target, 'main.cpp', 'main_window.cpp', 'app_paths.cpp'],
+    [resource_target, 'main.cpp', 'main_window.cpp', 'expand_collapse_btn.cpp', 'app_paths.cpp'],
     dependencies: [gtkmm_dep, openssl_dep]
 )

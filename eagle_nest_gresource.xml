@@ -4,5 +4,9 @@
     <file>toolkit.svg</file>
     <file>model.svg</file>
     <file>info.svg</file>
+    <file>train_model.svg</file>
+    <file>performance.svg</file>
+    <file>expand.svg</file>
+    <file>collapse.svg</file>
   </gresource>
 </gresources>

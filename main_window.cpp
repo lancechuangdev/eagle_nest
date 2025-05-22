@@ -1,5 +1,6 @@
 #include "main_window.h"
 #include "app_paths.h"
+#include "expand_collapse_btn.h"
 #include <iostream>
 #include <thread>
 #include <nlohmann/json.hpp>
@@ -881,9 +882,8 @@ void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInf
 
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
 
-        auto btn = Gtk::make_managed<Gtk::Button>("Info");
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
 
         // Detail content
         auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
@@ -918,8 +918,8 @@ void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInf
         revealer->set_reveal_child(false);  // initially hidden
 
         // Toggle the Revealer when the button is clicked
-        btn->signal_clicked().connect([revealer]() {
-            revealer->set_reveal_child(!revealer->get_reveal_child());
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
         });
 
         // Pack into vertical container
@@ -1316,9 +1316,8 @@ void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImagePred
 
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
 
-        auto btn = Gtk::make_managed<Gtk::Button>("Info");
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
 
         // Detail content
         auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
@@ -1356,8 +1355,8 @@ void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImagePred
         revealer->set_reveal_child(false);  // initially hidden
 
         // Toggle the Revealer when the button is clicked
-        btn->signal_clicked().connect([revealer]() {
-            revealer->set_reveal_child(!revealer->get_reveal_child());
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
         });
 
         // Pack into vertical container
@@ -1980,12 +1979,10 @@ void MainWindow::populate_explorer_train_images_listbox()
         lbl->set_tooltip_text(filename);
         lbl->set_max_width_chars(40);
         lbl->set_single_line_mode(true);
-
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
 
-        auto btn = Gtk::make_managed<Gtk::Button>("Info");
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
 
         // Detail content
         auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
@@ -2020,8 +2017,8 @@ void MainWindow::populate_explorer_train_images_listbox()
         revealer->set_reveal_child(false);  // initially hidden
 
         // Toggle the Revealer when the button is clicked
-        btn->signal_clicked().connect([revealer]() {
-            revealer->set_reveal_child(!revealer->get_reveal_child());
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
         });
 
         // Pack into vertical container
@@ -2542,9 +2539,8 @@ void MainWindow::populate_explorer_test_images_listbox(const std::vector<ImageIn
 
         hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
 
-        auto btn = Gtk::make_managed<Gtk::Button>("Info");
-        btn->set_valign(Gtk::ALIGN_CENTER);
-        hbox->pack_start(*btn, Gtk::PACK_SHRINK);
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
 
         // Detail content
         auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
@@ -2579,8 +2575,8 @@ void MainWindow::populate_explorer_test_images_listbox(const std::vector<ImageIn
         revealer->set_reveal_child(false);  // initially hidden
 
         // Toggle the Revealer when the button is clicked
-        btn->signal_clicked().connect([revealer]() {
-            revealer->set_reveal_child(!revealer->get_reveal_child());
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
         });
 
         // Pack into vertical container
