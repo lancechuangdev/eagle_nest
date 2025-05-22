@@ -36,6 +36,7 @@ protected:
     Gtk::Label *m_training_step2_lbl;
     Gtk::Label *m_training_step3_lbl;
     Gtk::Label *m_training_step4_lbl;
+    Gtk::Label *m_training_step5_lbl;
     Gtk::Button *m_previous_btn;
     Gtk::Button *m_next_btn;
     Gtk::Button *m_close_training_wizard_btn;
@@ -73,6 +74,13 @@ protected:
     Gtk::ListBox *m_wizard_test_images_lbox;
     Gtk::DrawingArea *m_wizard_test_image_drawing_area;
     Gtk::Switch *m_wizard_show_anomaly_heatmap_switch;
+    Gtk::Image *m_wizard_anomaly_score_dist_img_widget;
+
+    // Save Model
+    Gtk::Label *m_model_name_to_save_lbl;
+    Gtk::Label *m_model_version_to_save_lbl;
+    Gtk::Label *m_model_size_to_save_lbl;
+    Gtk::TextView *m_model_comment_to_save_tview;
     Gtk::Button *m_save_model_btn;
 
     // Dataset Explorer Stack
@@ -153,7 +161,7 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
     int m_current_step = 0;
     std::string m_active_model_page = "page_model_welcome";
-    std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training", "page_testing"};
+    std::vector<std::string> m_training_page_names = {"page_select_model", "page_select_images", "page_training", "page_testing", "page_save_model"};
     std::vector<Gtk::Label*> m_training_step_labels;
     std::vector<Gtk::CheckButton*> m_datasources_checkboxes;
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;

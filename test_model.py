@@ -5,6 +5,7 @@ import os
 import cv2
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import DataLoader
 from anomalib.models import EfficientAd
@@ -35,12 +36,12 @@ def load_images(resize_dims=None):
         category = entry.get("category")
 
         if not img_path or not os.path.exists(img_path):
-            print(f"Warning: Image path not found or invalid: {img_path}")
+            print(f"[Warning] Image path not found or invalid: {img_path}")
             continue
 
         img = cv2.imread(img_path)
         if img is None:
-            print(f"Warning: Unable to load image at {img_path}")
+            print(f"[Warning] Unable to load image at {img_path}")
             continue
 
         if resize_dims:
@@ -48,7 +49,7 @@ def load_images(resize_dims=None):
 
         images.append((img, category, img_path))
 
-    print(f"Loaded {len(images)} images for testing")
+    print(f"[Info] Loaded {len(images)} images for testing")
     return images
 
 class InferenceDataset(torch.utils.data.Dataset):
@@ -70,7 +71,7 @@ def build_dataloader(images, batch_size=32):
     return DataLoader(dataset, batch_size=batch_size, collate_fn=ImageBatch.collate)
 
 def main(model_name: str, resume_from_ckpt: str = ""):
-    print(f"Testing {model_name} with saved checkpoint")
+    print(f"[Info] Testing {model_name} with saved checkpoint")
     test_dir = wip_dataset_dir / "test"
 
     if not model_name:
@@ -112,15 +113,17 @@ def main(model_name: str, resume_from_ckpt: str = ""):
     heatmap_dir.mkdir(parents=True, exist_ok=True)
     results = []
 
+    # For histogram
+    all_scores = []
+    all_labels = []
+
     for i in range(num_batches):
         batch_pred = predictions[i]
         if not batch_pred:
             raise ValueError(f"[Error] No predictions found for batch {i}.")
         
-        num_patches = batch_pred.pred_mask.shape[0]
-        print(f"[Batch {i}] Num patches: {num_patches}")
-
-        for j in range(num_patches):
+        batch_size = batch_pred.pred_mask.shape[0]
+        for j in range(batch_size):
             image_path = Path(batch_pred.image_path[j])
 
             # Visualize anomaly map
@@ -136,7 +139,17 @@ def main(model_name: str, resume_from_ckpt: str = ""):
             anomaly_map_vis.save(heatmap_path)
 
             # Extract scalar values; note that these fields should have batch dimension too
-            anomaly_score = batch_pred.pred_score[i].item() if batch_pred.pred_score.dim() > 0 else batch_pred.pred_score.item()
+            anomaly_score = (
+                batch_pred.pred_score[j].item()
+                if batch_pred.pred_score.dim() > 0
+                else batch_pred.pred_score.item()
+            )
+
+            # Get ground truth label
+            label = batch_pred.gt_label[j]
+
+            all_scores.append(anomaly_score)
+            all_labels.append(label)
 
             # Record result
             results.append({
@@ -148,6 +161,27 @@ def main(model_name: str, resume_from_ckpt: str = ""):
     # Save JSON results
     with open(test_dir / "pred_results.json", "w") as f:
         json.dump(results, f, indent=4)
+
+    print("[Info] Generating anomaly score distribution plot...")
+
+    # Plot score distribution
+    normal_scores = [s for s, l in zip(all_scores, all_labels) if l == 0]
+    abnormal_scores = [s for s, l in zip(all_scores, all_labels) if l == 1]
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(normal_scores, bins=50, alpha=0.5, label="Normal")
+    plt.hist(abnormal_scores, bins=50, alpha=0.5, label="Abnormal")
+    plt.xlabel("Anomaly Score")
+    plt.ylabel("Number of Images")
+    plt.title("Anomaly Score Distribution")
+    plt.legend()
+    plt.grid(True)
+
+    # Save the plot image
+    plot_path = test_dir / "score_distribution.png"
+    plt.savefig(plot_path, bbox_inches="tight")
+    plt.close()
+    print(f"[Info] Plot saved.")
 
     print("[Info] Testing completed.")
 

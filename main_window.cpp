@@ -96,6 +96,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_training_step_labels.push_back(m_training_step4_lbl);
     }
 
+    m_builder->get_widget("training_step5_lbl", m_training_step5_lbl);
+    if (m_training_step5_lbl)
+    {
+        m_training_step_labels.push_back(m_training_step5_lbl);
+    }
+
     m_builder->get_widget("model_name_entry", m_model_name_entry);
     if (m_model_name_entry)
     {
@@ -295,6 +301,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             m_wizard_test_image_drawing_area->queue_draw();
         });
     }
+
+    m_builder->get_widget("wizard_anomaly_score_distr_img_widget", m_wizard_anomaly_score_dist_img_widget);
 
     m_builder->get_widget("save_model_btn", m_save_model_btn);
     if (m_save_model_btn)
@@ -644,10 +652,6 @@ void MainWindow::on_next_clicked()
     }
     if (m_current_step == m_training_page_names.size() - 1) {
         m_next_btn->set_sensitive(false);
-
-        // Update the model name and version labels on Testing page
-        m_model_under_test_lbl->set_text(m_model_name);
-        m_model_version_under_test_lbl->set_text(m_model_version);
     }
     update_step_indicator();
     transition_step(true);
@@ -676,9 +680,22 @@ void MainWindow::transition_step(bool step_forward)
 {
     if (step_forward) // This function is triggered by the next button
     {
-        if (m_current_step == 1) // Step 0 to Step 1
+        if (m_current_step == 1) // Step 0 (Select Model) to Step 1 (Select Images)
         {
             
+        }
+        else if (m_current_step == 2) // Step 1 (Select Images) to Step 2 (Training)
+        {
+        }
+        else if (m_current_step == 3) // Step 2 (Training) to Step 3 (Testing)
+        {
+            // Update the model name and version labels on Testing page
+            m_model_under_test_lbl->set_text(m_model_name);
+            m_model_version_under_test_lbl->set_text(m_model_version);
+        }
+        else if (m_current_step == 4) // Step 3 (Testing) to Step 4 (Save Model)
+        {
+
         }
     }
     else // This function is triggered by the previous button
@@ -1197,6 +1214,13 @@ void MainWindow::on_test_model_clicked()
                 m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
                 m_f1_score_lbl->set_text(std::to_string(m_f1_value));
                 populate_wizard_test_images_listbox(imgs);
+                fs::path score_distr_path = AppPaths::WIP_Dataset_Path / "test" / "score_distribution.png";
+                auto pixbuf = Gdk::Pixbuf::create_from_file(score_distr_path.string());
+                if (!pixbuf) {
+                    std::cerr << "Failed to load score distribution image." << std::endl;
+                } else {
+                    m_wizard_anomaly_score_dist_img_widget->set(pixbuf);
+                }
             }
         });
     }).detach(); // Detach the thread to allow it to run independently
