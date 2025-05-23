@@ -2185,11 +2185,36 @@ Ensure your training data is complete and accurately represents the desired inpu
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
+                                <property name="tooltip-text" translatable="yes">AUROC (Area Under the ROC Curve) shows how well the model ranks items from good to bad.
+A higher score (close to 1.0) means better separation between defective and non-defective items — even before setting a threshold.</property>
                                 <property name="halign">end</property>
                                 <property name="label" translatable="yes">AUROC:</property>
                               </object>
                               <packing>
                                 <property name="left-attach">0</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="tooltip-text" translatable="yes">F1 score measures how accurate the system is at finding the real defects without making too many mistakes.
+Balances how many true issues the system found (recall) and how many of the alerts were correct (precision).</property>
+                                <property name="label" translatable="yes">F1 Score:</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="f1_score_lbl">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
                                 <property name="top-attach">0</property>
                               </packing>
                             </child>
@@ -2198,27 +2223,6 @@ Ensure your training data is complete and accurately represents the desired inpu
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
                                 <property name="halign">start</property>
-                              </object>
-                              <packing>
-                                <property name="left-attach">1</property>
-                                <property name="top-attach">0</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="label" translatable="yes">F1 Score:</property>
-                              </object>
-                              <packing>
-                                <property name="left-attach">0</property>
-                                <property name="top-attach">1</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkLabel" id="f1_score_lbl">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
                               </object>
                               <packing>
                                 <property name="left-attach">1</property>
