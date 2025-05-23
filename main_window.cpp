@@ -233,6 +233,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         });
     }
 
+    m_builder->get_widget("wizard_training_selected_count_lbl", m_wizard_training_selected_count_lbl);
+
+    m_builder->get_widget("wizard_training_included_count_lbl", m_wizard_training_included_count_lbl);
+
+    m_builder->get_widget("wizard_training_total_count_lbl", m_wizard_training_total_count_lbl);
+
     m_builder->get_widget("model_size_cbox", m_model_size_cbox);
 
     m_builder->get_widget("max_epochs_sbtn", m_max_epochs_sbtn);
@@ -412,6 +418,10 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_remove_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_train_images_clicked));
     }
 
+    m_builder->get_widget("explorer_training_selected_count_lbl", m_explorer_training_selected_count_lbl);
+
+    m_builder->get_widget("explorer_training_total_count_lbl", m_explorer_training_total_count_lbl);
+
     m_builder->get_widget("test_split_ratio_sbtn", m_test_split_ratio_sbtn);
 
     m_builder->get_widget("auto_split_btn", m_auto_split_btn);
@@ -484,6 +494,9 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_remove_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_test_images_clicked));
     }
 
+    m_builder->get_widget("explorer_test_selected_count_lbl", m_explorer_test_selected_count_lbl);
+
+    m_builder->get_widget("explorer_test_total_count_lbl", m_explorer_test_total_count_lbl);
 }
 
 MainWindow::~MainWindow()
@@ -760,6 +773,8 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
         std::vector<ImageInfo> images_from_training_set;
         std::string selected_img_inclusion = m_training_wizard_img_included_cbox->get_active_text();
         std::string selected_img_category = m_training_wizard_img_category_cbox->get_active_text();
+        int total_training_images_count = 0;
+        int included_training_images_count = 0;
 
         try
         {
@@ -803,16 +818,21 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
                     std::string inclusion = entry["inclusion"];
                     std::string dataset_type = entry["dataset_type"];
 
+                    // Filter based on dataset type
+                    if (dataset_type != "train")
+                        continue;
+                    
+                    total_training_images_count++;
+
+                    if (inclusion == "Included")
+                        included_training_images_count++;
+                    
                     // Filter based on inclusion status
-                    if (selected_img_inclusion != "all" && selected_img_inclusion != inclusion)
+                    if (selected_img_inclusion != inclusion)
                         continue;
 
                     // Filter based on category
                     if (selected_img_category != category)
-                        continue;
-                    
-                    // Filter based on dataset type
-                    if (dataset_type != "train")
                         continue;
 
                     images_from_training_set.emplace_back(ImageInfo {
@@ -834,9 +854,17 @@ void MainWindow::on_training_wizard_image_refresh_clicked()
         }
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set)]() {
+        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set), included_training_images_count, total_training_images_count]() {
             populate_wizard_train_images_listbox(imgs);
             m_toggle_all_on_wizard_btn->set_label("Select All");
+            m_selected_images_on_wizard_listbox.clear();
+            
+            // Update the count labels
+            m_wizard_training_selected_count_lbl->set_text("0");
+            m_wizard_training_included_count_lbl->set_text(std::to_string(included_training_images_count));
+            m_wizard_training_total_count_lbl->set_text(std::to_string(total_training_images_count));
+            
+            // Enable the refresh button again
             m_training_wizard_image_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -871,6 +899,9 @@ void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInf
                 m_selected_images_on_wizard_listbox[checkbox] = info.img_id;
             else
                 m_selected_images_on_wizard_listbox.erase(checkbox);
+
+            // Update the count label
+            m_wizard_training_selected_count_lbl->set_text(std::to_string(m_selected_images_on_wizard_listbox.size()));
         });
 
         auto lbl = Gtk::make_managed<Gtk::Label>(filename);
@@ -1746,6 +1777,7 @@ void MainWindow::on_train_images_refresh_clicked()
         // Get selected data source name from combo box
         std::string selected_source_name = m_dataset_sources_cbox->get_active_text();
         std::string selected_img_category = m_train_image_category_cbox->get_active_text();
+        int training_images_count = 0;
 
         // Clear previous images
         m_images_from_datasources.clear();
@@ -1762,6 +1794,27 @@ void MainWindow::on_train_images_refresh_clicked()
         {
             ifs >> images_json;
             ifs.close();
+        }
+
+        try
+        {
+            for (const auto& entry : images_json)
+            {
+                std::string inclusion = entry["inclusion"];
+                std::string dataset_type = entry["dataset_type"];
+
+                if (dataset_type != "train")
+                    continue;
+                
+                if (inclusion != "Included")
+                    continue;
+                
+                training_images_count++;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to retrieve the training images count: " << e.what() << '\n';
         }
 
         try
@@ -1899,9 +1952,12 @@ void MainWindow::on_train_images_refresh_clicked()
         }
 
         // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this]() {
+        Glib::signal_idle().connect_once([this, training_images_count]() {
             populate_explorer_train_images_listbox();
             m_toggle_all_on_train_btn->set_label("Select All");
+            m_selected_images_on_train_listbox.clear();
+            m_explorer_training_selected_count_lbl->set_text("0");
+            m_explorer_training_total_count_lbl->set_text(std::to_string(training_images_count));
             m_train_images_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -1971,6 +2027,9 @@ void MainWindow::populate_explorer_train_images_listbox()
                 m_selected_images_on_train_listbox[checkbox] = info.img_id;
             else
                 m_selected_images_on_train_listbox.erase(checkbox);
+
+            // Update the image count label based on selection
+            m_explorer_training_selected_count_lbl->set_text(std::to_string(m_selected_images_on_train_listbox.size()));
         });
 
         auto lbl = Gtk::make_managed<Gtk::Label>(filename);
@@ -2443,12 +2502,14 @@ void MainWindow::on_test_images_refresh_clicked()
 
     std::string selected_dataset_type = m_dataset_type_cbox->get_active_text();
     std::string selected_img_category = m_test_image_category_cbox->get_active_text();
-
+    
     // Load images in a separate thread
     std::thread([this, selected_dataset_type = std::move(selected_dataset_type),
         selected_img_category = std::move(selected_img_category)]()
     {
         std::vector<ImageInfo> filtered_images;
+        int test_images_count = 0;
+        json images_json;
 
         // Load existing JSON
         auto dataset_json = AppPaths::Dataset_Path / "dataset.json";
@@ -2459,27 +2520,30 @@ void MainWindow::on_test_images_refresh_clicked()
         }
         else
         {
-            json images_json;
             ifs >> images_json;
             ifs.close();
-            
-            for (const auto& entry : images_json)
+        }
+
+        for (const auto& entry : images_json)
+        {
+            const std::string& img_id = entry["img_id"];
+            const fs::path src_img_path = entry["src_img_path"];
+            const fs::path dest_img_path = entry["dest_img_path"];
+            const std::string& source_name  = entry["source_name"];
+            const std::string& source_type  = entry["source_type"];
+            const std::string& category = entry["category"];
+            const std::string& inclusion = entry["inclusion"];
+            const std::string& dataset_type = entry["dataset_type"];
+
+            // Count test images that are included
+            if (dataset_type == "test" && inclusion == "Included")
             {
-                std::string img_id = entry["img_id"];
-                fs::path src_img_path = entry["src_img_path"];
-                fs::path dest_img_path = entry["dest_img_path"];
-                std::string source_name = entry["source_name"];
-                std::string source_type = entry["source_type"];
-                std::string category = entry["category"];
-                std::string inclusion = entry["inclusion"];
-                std::string dataset_type = entry["dataset_type"];
+                ++test_images_count;
+            }
 
-                if (selected_dataset_type != dataset_type)
-                    continue;
-
-                if (selected_img_category != category)
-                    continue;
-                
+            // Filter images by selected dataset and category
+            if (dataset_type == selected_dataset_type && category == selected_img_category)
+            {
                 filtered_images.emplace_back(ImageInfo{
                     img_id,
                     src_img_path,
@@ -2493,9 +2557,12 @@ void MainWindow::on_test_images_refresh_clicked()
             }
         }
 
-        Glib::signal_idle().connect_once([this, imgs = std::move(filtered_images)]() {
+        Glib::signal_idle().connect_once([this, imgs = std::move(filtered_images), test_images_count]() {
             populate_explorer_test_images_listbox(imgs);
             m_toggle_all_on_test_btn->set_label("Select All");
+            m_selected_images_on_test_listbox.clear();
+            m_explorer_test_selected_count_lbl->set_text("0");
+            m_explorer_test_total_count_lbl->set_text(std::to_string(test_images_count));
             m_test_images_refresh_btn->set_sensitive(true);
         });
     }).detach(); // Detach the thread to allow it to run independently
@@ -2528,6 +2595,9 @@ void MainWindow::populate_explorer_test_images_listbox(const std::vector<ImageIn
                 m_selected_images_on_test_listbox[checkbox] = info.img_id;
             else
                 m_selected_images_on_test_listbox.erase(checkbox);
+
+            // Update the image count label based on selection
+            m_explorer_test_selected_count_lbl->set_text(std::to_string(m_selected_images_on_test_listbox.size()));
         });
 
         auto lbl = Gtk::make_managed<Gtk::Label>(filename);

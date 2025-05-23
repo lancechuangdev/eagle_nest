@@ -22,10 +22,45 @@ public:
     virtual ~MainWindow();
 
 protected:
+    // Main menu
     Gtk::RadioButton *m_model_btn;
     Gtk::RadioButton *m_explore_btn;
     Gtk::RadioButton *m_toolkit_btn;
     Gtk::Stack *m_content_stack;
+
+    // Dataset Explorer Stack
+    Gtk::Stack *m_explorer_stack;
+    Gtk::RadioButton *m_explorer_dataset_sources_rbtn;
+    Gtk::RadioButton *m_explorer_training_images_rbtn;
+    Gtk::RadioButton *m_explorer_test_images_rbtn;
+
+    // Dataset Explorer - Training Images
+    Gtk::Button *m_dataset_sources_refresh_btn;
+    Gtk::Grid *m_dataset_sources_grid;
+    Gtk::ComboBoxText *m_dataset_sources_cbox;
+    Gtk::ComboBoxText *m_train_image_category_cbox;
+    Gtk::Button *m_train_images_refresh_btn;
+    Gtk::ListBox *m_explorer_train_images_lbox;
+    Gtk::DrawingArea *m_explorer_train_image_drawing_area;
+    Gtk::Button *m_toggle_all_on_train_btn;
+    Gtk::Button *m_add_train_image_btn;
+    Gtk::Button *m_remove_train_image_btn;
+    Gtk::Label *m_explorer_training_selected_count_lbl;
+    Gtk::Label *m_explorer_training_total_count_lbl;
+
+    // Dataset Explorer - Test Images
+    Gtk::SpinButton *m_test_split_ratio_sbtn;
+    Gtk::Button *m_auto_split_btn;
+    Gtk::ComboBoxText *m_dataset_type_cbox;
+    Gtk::ComboBoxText *m_test_image_category_cbox;
+    Gtk::Button *m_test_images_refresh_btn;
+    Gtk::ListBox *m_explorer_test_images_lbox;
+    Gtk::DrawingArea *m_explorer_test_image_drawing_area;
+    Gtk::Button *m_toggle_all_on_test_btn;
+    Gtk::Button *m_add_test_image_btn;
+    Gtk::Button *m_remove_test_image_btn;
+    Gtk::Label *m_explorer_test_selected_count_lbl;
+    Gtk::Label *m_explorer_test_total_count_lbl;
 
     // Model Training Startup
     Gtk::Button *m_start_train_model_btn;
@@ -58,6 +93,9 @@ protected:
     Gtk::Button *m_toggle_all_on_wizard_btn;
     Gtk::Button *m_include_train_images_btn;
     Gtk::Button *m_exclude_train_images_btn;
+    Gtk::Label *m_wizard_training_selected_count_lbl;
+    Gtk::Label *m_wizard_training_included_count_lbl;
+    Gtk::Label *m_wizard_training_total_count_lbl;
 
     // Model Training
     Gtk::ComboBoxText *m_model_size_cbox;
@@ -82,32 +120,6 @@ protected:
     Gtk::Label *m_model_size_to_save_lbl;
     Gtk::TextView *m_model_comment_to_save_tview;
     Gtk::Button *m_save_model_btn;
-
-    // Dataset Explorer Stack
-    Gtk::Stack *m_explorer_stack;
-    Gtk::RadioButton *m_explorer_dataset_sources_rbtn;
-    Gtk::RadioButton *m_explorer_training_images_rbtn;
-    Gtk::RadioButton *m_explorer_test_images_rbtn;
-    Gtk::Button *m_dataset_sources_refresh_btn;
-    Gtk::Grid *m_dataset_sources_grid;
-    Gtk::ComboBoxText *m_dataset_sources_cbox;
-    Gtk::ComboBoxText *m_train_image_category_cbox;
-    Gtk::Button *m_train_images_refresh_btn;
-    Gtk::ListBox *m_explorer_train_images_lbox;
-    Gtk::DrawingArea *m_explorer_train_image_drawing_area;
-    Gtk::Button *m_toggle_all_on_train_btn;
-    Gtk::Button *m_add_train_image_btn;
-    Gtk::Button *m_remove_train_image_btn;
-    Gtk::SpinButton *m_test_split_ratio_sbtn;
-    Gtk::Button *m_auto_split_btn;
-    Gtk::ComboBoxText *m_dataset_type_cbox;
-    Gtk::ComboBoxText *m_test_image_category_cbox;
-    Gtk::Button *m_test_images_refresh_btn;
-    Gtk::ListBox *m_explorer_test_images_lbox;
-    Gtk::DrawingArea *m_explorer_test_image_drawing_area;
-    Gtk::Button *m_toggle_all_on_test_btn;
-    Gtk::Button *m_add_test_image_btn;
-    Gtk::Button *m_remove_test_image_btn;
 
     // Key events
     bool on_key_press_event(GdkEventKey *key_event) override;
