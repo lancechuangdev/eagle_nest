@@ -1,5 +1,26 @@
 #include <iostream>
 #include "main_window.h"
+#include "app_paths.h"
+
+std::string resolve_glade_file_path()
+{
+    const std::filesystem::path dev_path = "../ui.glade";
+    const std::filesystem::path install_path = AppPaths::Install_Share_Dir / "ui.glade";
+
+    if (std::filesystem::exists(dev_path))
+    {
+        return dev_path;
+    }
+    else if (std::filesystem::exists(install_path))
+    {
+        return install_path;
+    }
+    else
+    {
+        std::cerr << "UI file not found!" << std::endl;
+        return "";
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -8,8 +29,13 @@ int main(int argc, char **argv)
 
     try
     {
-        auto gladeFile = "../ui.glade";
-        builder->add_from_file(gladeFile);
+        auto glade_file_path = resolve_glade_file_path();
+        if (glade_file_path.empty())
+        {
+            std::cerr << "Failed to resolve glade file path." << std::endl;
+            return 1;
+        }
+        builder->add_from_file(glade_file_path);
     }
     catch (const Glib::FileError &ex)
     {

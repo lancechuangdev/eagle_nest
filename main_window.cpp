@@ -568,6 +568,17 @@ void MainWindow::on_start_train_model_clicked()
         }
     }
 
+    // Copy all python scripts from the install share directory to the WIP directory
+    auto install_share_dir = AppPaths::Install_Share_Dir;
+    auto wip_dir = AppPaths::WIP_Path;
+    for (const auto &entry : std::filesystem::directory_iterator(install_share_dir))
+    {
+        if (entry.path().extension() == ".py")
+        {
+            std::filesystem::copy(entry.path(), wip_dir / entry.path().filename());
+        }
+    }
+
     // Load all existing trained models and populate the model name combo box
     load_existing_models();
 }

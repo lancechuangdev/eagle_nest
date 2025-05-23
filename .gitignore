@@ -1,6 +1,6 @@
 /builddir/
 /debian/.debhelper/*
-/debian/eagle-eye/*
+/debian/eagle-nest/*
 /debian/changelog
 /debian/files
 /.ipynb_checkpoints/*

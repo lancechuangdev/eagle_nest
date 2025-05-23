@@ -6,3 +6,4 @@ const std::filesystem::path AppPaths::Models_Path = AppPaths::getHomePath() / "e
 const std::filesystem::path AppPaths::WIP_Path = AppPaths::getHomePath() / "eagle_nest" / "wip";
 const std::filesystem::path AppPaths::WIP_Dataset_Path = AppPaths::WIP_Path / "dataset";
 const std::filesystem::path AppPaths::WIP_Model_Path = AppPaths::WIP_Path / "model";
+const std::filesystem::path AppPaths::Install_Share_Dir = "/usr/local/share/eagle_nest";

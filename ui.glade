@@ -971,7 +971,6 @@ Ensure your training data is complete and accurately represents the desired inpu
                                   <object class="GtkListBox" id="explorer_test_images_lbox">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
-                                    <property name="selection-mode">none</property>
                                   </object>
                                 </child>
                               </object>

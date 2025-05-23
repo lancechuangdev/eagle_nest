@@ -1,0 +1,19 @@
+Source: eagle-nest
+Section: utils
+Priority: optional
+Maintainer: Liang Zhuang <bzhuangliang@gmail.com>
+Standards-Version: 4.5.1
+
+Package: eagle-nest
+Architecture: amd64
+Depends: 
+    libgtk-3-dev, 
+    libsigc++-2.0-dev, 
+    libglibmm-2.4-dev, 
+    libcairomm-1.0-dev, 
+    libpangomm-1.4-dev, 
+    libatkmm-1.6-dev, 
+    libgtkmm-3.0-dev (>= 3.24.0), 
+    nlohmann-json3-dev,
+    libssl-dev
+Description: A GUI app for managing training/test image sets and training vision models for anomaly detection.
