@@ -698,6 +698,43 @@ void MainWindow::on_close_training_wizard_clicked()
         std::filesystem::remove_all(entry.path());
     }
 
+    // Reset the training wizard state
+    m_current_step = 0;
+    m_model_name = "";
+    m_model_version = "v1"; // Reset version to v1
+    m_model_size = "";
+    m_model_name_entry->set_text("");
+    m_existing_models_cbox->remove_all();
+    m_model_version_cbox->remove_all();
+    m_model_comment_tview->get_buffer()->set_text("");
+    for (auto* child : m_wizard_train_images_lbox->get_children())
+    {
+        m_wizard_train_images_lbox->remove(*child);
+    }
+    m_wizard_train_img_pixbuf.reset();
+    m_selected_images_on_wizard_listbox.clear();
+    m_wizard_training_selected_count_lbl->set_text("0");
+    m_wizard_training_included_count_lbl->set_text("0");
+    m_wizard_training_total_count_lbl->set_text("0");
+    m_train_model_tview->get_buffer()->set_text("");
+    m_auroc_value = 0.0;
+    m_f1_value = 0.0;
+    m_f1_score_lbl->set_text("");
+    m_area_under_roc_lbl->set_text("");
+    for (auto* child : m_wizard_test_images_lbox->get_children())
+    {
+        m_wizard_test_images_lbox->remove(*child);
+    }
+    m_wizard_test_img_pixbuf.reset();
+    m_wizard_test_heatmap_pixbuf.reset();
+    m_wizard_anomaly_score_dist_img_widget->clear();
+    m_model_name_to_save_lbl->set_text("");
+    m_model_version_to_save_lbl->set_text("");
+    m_model_size_to_save_lbl->set_text("");
+    m_model_comment_to_save_tview->get_buffer()->set_text("");
+    m_previous_btn->set_sensitive(false);
+    m_next_btn->set_sensitive(true);
+
     m_active_model_page = "page_model_welcome";
     m_content_stack->set_visible_child(m_active_model_page);
 }
@@ -1264,8 +1301,8 @@ void MainWindow::on_test_model_clicked()
             m_test_model_btn->set_sensitive(true);
             if (result)
             {
-                m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
                 m_f1_score_lbl->set_text(std::to_string(m_f1_value));
+                m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
                 populate_wizard_test_images_listbox(imgs);
                 fs::path score_distr_path = AppPaths::WIP_Dataset_Path / "test" / "score_distribution.png";
                 auto pixbuf = Gdk::Pixbuf::create_from_file(score_distr_path.string());
@@ -1444,7 +1481,7 @@ void MainWindow::on_save_model_clicked()
 
     // Save model in a separate thread
     std::thread([this]() {
-        std::string comment = m_model_comment_tview->get_buffer()->get_text();
+        std::string comment = m_model_comment_to_save_tview->get_buffer()->get_text();
         std::string model_size = m_model_size_cbox->get_active_id();
         int max_epochs = m_max_epochs_sbtn->get_value_as_int();
 

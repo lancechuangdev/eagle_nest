@@ -1324,6 +1324,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                             <property name="label" translatable="yes">Enhance Existing Model</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
+                            <property name="focus-on-click">False</property>
                             <property name="receives-default">False</property>
                             <property name="draw-indicator">True</property>
                             <property name="group">create_model_rbtn</property>
@@ -1338,6 +1339,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                             <property name="label" translatable="yes">Create New Model</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
+                            <property name="focus-on-click">False</property>
                             <property name="receives-default">False</property>
                             <property name="active">True</property>
                             <property name="draw-indicator">True</property>

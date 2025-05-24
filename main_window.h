@@ -107,8 +107,8 @@ protected:
     Gtk::Label *m_model_under_test_lbl;
     Gtk::Label *m_model_version_under_test_lbl;
     Gtk::Button *m_test_model_btn;
-    Gtk::Label *m_area_under_roc_lbl;
     Gtk::Label *m_f1_score_lbl;
+    Gtk::Label *m_area_under_roc_lbl;
     Gtk::ListBox *m_wizard_test_images_lbox;
     Gtk::DrawingArea *m_wizard_test_image_drawing_area;
     Gtk::Switch *m_wizard_show_anomaly_heatmap_switch;
