@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Eagle Nest
+Comment=A Model Traning App for Fabric Anomaly Detection
+Exec=/usr/local/bin/eagle_nest/en
+Icon=/usr/share/icons/hicolor/512x512/apps/com.example.eagle_nest.png
+Terminal=false
+Type=Application
+Categories=Application
+StartupWMClass=en

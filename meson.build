@@ -39,3 +39,15 @@ install_data(
     ['ui.glade', 'train_model.py', 'test_model.py', 'convert_model.py'],
     install_dir: join_paths(get_option('prefix'), 'share', 'eagle_nest')
 )
+
+# Install app icon to the system icons directory
+install_data(
+    'com.example.eagle_nest.png',
+    install_dir: '/usr/share/icons/hicolor/512x512/apps',
+)
+
+# Install .desktop file to system-wide applications directory
+install_data(
+    'eagle_nest.desktop',
+    install_dir: '/usr/share/applications'
+)
