@@ -25,7 +25,6 @@ protected:
     // Main menu
     Gtk::RadioButton *m_model_btn;
     Gtk::RadioButton *m_explore_btn;
-    Gtk::RadioButton *m_toolkit_btn;
     Gtk::Stack *m_content_stack;
 
     // Dataset Explorer Stack

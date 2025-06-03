@@ -39,12 +39,6 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_explore_btn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_menu_toggled));
     }
 
-    m_builder->get_widget("toolkit_rbtn", m_toolkit_btn);
-    if (m_toolkit_btn)
-    {
-        m_toolkit_btn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_menu_toggled));
-    }
-
     m_builder->get_widget("content_stack", m_content_stack);
 
     m_builder->get_widget("start_train_model_btn", m_start_train_model_btn);
@@ -538,10 +532,6 @@ void MainWindow::on_menu_toggled()
     else if (m_explore_btn->get_active())
     {
         m_content_stack->set_visible_child("page_explore");
-    }
-    else if (m_toolkit_btn->get_active())
-    {
-        m_content_stack->set_visible_child("page_toolkit");
     }
 }
 
