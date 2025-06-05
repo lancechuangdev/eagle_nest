@@ -155,6 +155,7 @@ protected:
     Gtk::Button *m_eval_back_btn;
     Gtk::Button *m_eval_next_btn;
     Gtk::Button *m_eval_placeholder_btn;
+    Gtk::Button *m_close_model_performance_eval_btn;
 
     // Key events
     bool on_key_press_event(GdkEventKey *key_event) override;
@@ -204,6 +205,7 @@ protected:
     void on_eval_model_clicked();
     void on_eval_back_clicked();
     void on_eval_next_clicked();
+    void on_close_model_performance_eval_clicked();
     
 private:
     struct ImageInfo {

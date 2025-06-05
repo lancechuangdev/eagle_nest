@@ -679,6 +679,12 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
             m_model2_test_image_drawing_area->queue_draw();
         });
     }
+
+    m_builder->get_widget("close_model_performance_eval_btn", m_close_model_performance_eval_btn);
+    if (m_close_model_performance_eval_btn)
+    {
+        m_close_model_performance_eval_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_close_model_performance_eval_clicked));
+    }
 }
 
 MainWindow::~MainWindow()
@@ -3649,4 +3655,61 @@ void MainWindow::on_eval_next_clicked()
             break;
         }
     }    
+}
+
+void MainWindow::on_close_model_performance_eval_clicked()
+{
+    // Clear the directory if it already exists
+    for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
+    {
+        std::filesystem::remove_all(entry.path());
+    }
+
+    // Reset the model performance evaluation UI
+    m_model1_existing_models_cbox->remove_all();
+    m_model1_version_cbox->remove_all();
+    m_model1_comment_tview->get_buffer()->set_text("");
+    m_model1_f1_score_lbl->set_text("");
+    m_model1_area_under_roc_lbl->set_text("");
+    m_model1_anomaly_score_dist_img_widget->set(Glib::RefPtr<Gdk::Pixbuf>()); // Clear the image widget
+    m_model1_test_image_drawing_area->set_size_request(0, 0); // Reset the drawing area size
+    m_model1_test_image_drawing_area->queue_draw(); // Redraw the area
+    m_model1_test_img_anomaly_score_lbl->set_text("");
+    m_model2_existing_models_cbox->remove_all();
+    m_model2_version_cbox->remove_all();
+    m_model2_comment_tview->get_buffer()->set_text("");
+    m_model2_f1_score_lbl->set_text("");
+    m_model2_area_under_roc_lbl->set_text("");
+    m_model2_anomaly_score_dist_img_widget->set(Glib::RefPtr<Gdk::Pixbuf>()); // Clear the image widget
+    m_model2_test_image_drawing_area->set_size_request(0, 0); // Reset the drawing area size
+    m_model2_test_image_drawing_area->queue_draw(); // Redraw the area
+    m_model2_test_img_anomaly_score_lbl->set_text("");
+    auto children = m_eval_test_images_lbox->get_children();
+    for (auto* child : children)
+    {
+        m_eval_test_images_lbox->remove(*child);
+    }
+
+    // Reset the model performance evaluation state
+    m_model1_auroc_value = 0.0;
+    m_model1_f1_value = 0.0;
+    m_model1_anomaly_heatmap_zoom_scale = 1.0;
+    m_model1_anomaly_score_dist_zoom_scale = 1.0;
+    m_model1_anomaly_score_dist_pixbuf.reset();
+    m_model1_test_img_pixbuf.reset();
+    m_model1_test_heatmap_pixbuf.reset();
+    m_model1_image_to_heatmap_map.clear();
+    m_model2_auroc_value = 0.0;
+    m_model2_f1_value = 0.0;
+    m_model2_anomaly_heatmap_zoom_scale = 1.0;
+    m_model2_anomaly_score_dist_zoom_scale = 1.0;
+    m_model2_anomaly_score_dist_pixbuf.reset();
+    m_model2_test_img_pixbuf.reset();
+    m_model2_test_heatmap_pixbuf.reset();
+    m_model2_image_to_heatmap_map.clear();
+    m_eval_show_heatmap = true;
+
+    // Navigate back to the model welcome page
+    m_active_model_page = "page_model_welcome";
+    m_content_stack->set_visible_child(m_active_model_page);
 }
