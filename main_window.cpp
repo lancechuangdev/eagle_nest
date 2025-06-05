@@ -451,7 +451,8 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
                     m_image_to_heatmap_map[image_path.string()].first,
                     m_wizard_test_img_pixbuf,
                     m_wizard_test_heatmap_pixbuf,
-                    m_wizard_test_image_drawing_area
+                    m_wizard_test_image_drawing_area,
+                    m_wizard_anomaly_heatmap_zoom_scale
                 );
                 std::cout << "Row activated for image: " << image_path << std::endl;
             }
@@ -466,8 +467,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
                 return on_image_draw(cr, 
                     m_wizard_test_img_pixbuf, 
                     m_wizard_show_heatmap ? m_wizard_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
-                    m_wizard_test_image_drawing_area,
-                    0.5f);
+                    m_wizard_test_image_drawing_area);
             }
         );
     }
@@ -529,14 +529,6 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_model1_anomaly_score_dist_zoom_out_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_score_dist_zoom_out_clicked));
     }
 
-    m_builder->get_widget("model1_anomaly_score_dist_img_ebox", m_model1_anomaly_score_dist_img_ebox);
-    if (m_model1_anomaly_score_dist_img_ebox)
-    {
-        m_model1_anomaly_score_dist_img_ebox->add_events(Gdk::SCROLL_MASK);
-        m_model1_anomaly_score_dist_img_ebox->signal_scroll_event().connect(
-            sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_score_dist_image_scroll), false);
-    }
-
     m_builder->get_widget("model1_test_image_drawing_area", m_model1_test_image_drawing_area);
     if (m_model1_test_image_drawing_area)
     {
@@ -546,9 +538,22 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
                     m_model1_test_img_pixbuf, 
                     m_eval_show_heatmap ? m_model1_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
                     m_model1_test_image_drawing_area,
-                    0.5f);
+                    0.5f,
+                    m_model1_anomaly_heatmap_zoom_scale);
             }
         );
+    }
+
+    m_builder->get_widget("model1_anomaly_heatmap_zoom_in_btn", m_model1_anomaly_heatmap_zoom_in_btn);
+    if (m_model1_anomaly_heatmap_zoom_in_btn)
+    {
+        m_model1_anomaly_heatmap_zoom_in_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_heatmap_zoom_in_clicked));
+    }
+
+    m_builder->get_widget("model1_anomaly_heatmap_zoom_out_btn", m_model1_anomaly_heatmap_zoom_out_btn);
+    if (m_model1_anomaly_heatmap_zoom_out_btn)
+    {
+        m_model1_anomaly_heatmap_zoom_out_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_heatmap_zoom_out_clicked));
     }
 
     m_builder->get_widget("model1_test_img_anomaly_score_lbl", m_model1_test_img_anomaly_score_lbl);
@@ -573,12 +578,16 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
 
     m_builder->get_widget("model2_anomaly_score_dist_img_widget", m_model2_anomaly_score_dist_img_widget);
 
-    m_builder->get_widget("model2_anomaly_score_dist_img_ebox", m_model2_anomaly_score_dist_img_ebox);
-    if (m_model2_anomaly_score_dist_img_ebox)
+    m_builder->get_widget("model2_anomaly_score_dist_zoom_in_btn", m_model2_anomaly_score_dist_zoom_in_btn);
+    if (m_model2_anomaly_score_dist_zoom_in_btn)
     {
-        m_model2_anomaly_score_dist_img_ebox->add_events(Gdk::SCROLL_MASK);
-        m_model2_anomaly_score_dist_img_ebox->signal_scroll_event().connect(
-            sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_score_dist_image_scroll), false);
+        m_model2_anomaly_score_dist_zoom_in_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_score_dist_zoom_in_clicked));
+    }
+
+    m_builder->get_widget("model2_anomaly_score_dist_zoom_out_btn", m_model2_anomaly_score_dist_zoom_out_btn);
+    if (m_model2_anomaly_score_dist_zoom_out_btn)
+    {
+        m_model2_anomaly_score_dist_zoom_out_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_score_dist_zoom_out_clicked));
     }
 
     m_builder->get_widget("model2_test_image_drawing_area", m_model2_test_image_drawing_area);
@@ -590,9 +599,22 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
                     m_model2_test_img_pixbuf, 
                     m_eval_show_heatmap ? m_model2_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
                     m_model2_test_image_drawing_area,
-                    0.5f);
+                    0.5f,
+                    m_model2_anomaly_heatmap_zoom_scale);
             }
         );
+    }
+
+    m_builder->get_widget("model2_anomaly_heatmap_zoom_in_btn", m_model2_anomaly_heatmap_zoom_in_btn);
+    if (m_model2_anomaly_heatmap_zoom_in_btn)
+    {
+        m_model2_anomaly_heatmap_zoom_in_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_heatmap_zoom_in_clicked));
+    }
+
+    m_builder->get_widget("model2_anomaly_heatmap_zoom_out_btn", m_model2_anomaly_heatmap_zoom_out_btn);
+    if (m_model2_anomaly_heatmap_zoom_out_btn)
+    {
+        m_model2_anomaly_heatmap_zoom_out_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_heatmap_zoom_out_clicked));
     }
 
     m_builder->get_widget("model2_test_img_anomaly_score_lbl", m_model2_test_img_anomaly_score_lbl);
@@ -1514,7 +1536,8 @@ bool MainWindow::on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr,
     Glib::RefPtr<Gdk::Pixbuf> base_pixbuf,
     Glib::RefPtr<Gdk::Pixbuf> overlay_pixbuf,
     Gtk::DrawingArea* area,
-    double overlay_alpha)
+    double overlay_alpha,
+    double zoom_scale)
 {
     if (!base_pixbuf || !area)
     return true;
@@ -1527,12 +1550,20 @@ bool MainWindow::on_image_draw(const Cairo::RefPtr<Cairo::Context>& cr,
     const int img_w = base_pixbuf->get_width();
     const int img_h = base_pixbuf->get_height();
 
-    double scale_x = static_cast<double>(area_w) / img_w;
-    double scale_y = static_cast<double>(area_h) / img_h;
-    double scale = std::min(scale_x, scale_y);
+    // double scale_x = static_cast<double>(area_w) / img_w;
+    // double scale_y = static_cast<double>(area_h) / img_h;
+    // double scale = std::min(scale_x, scale_y);
+    // double scale = m_model1_anomaly_heatmap_zoom_scale;
+    double scale = zoom_scale;
+    if (scale <= 0.0)
+    {
+        double scale_x = static_cast<double>(area_w) / img_w;
+        double scale_y = static_cast<double>(area_h) / img_h;
+        scale = std::min(scale_x, scale_y);
+    }
 
     // Centering offset
-    double dx = (area_w  - img_w * scale) * 0.5;
+    double dx = (area_w - img_w * scale) * 0.5;
     double dy = (area_h - img_h * scale) * 0.5;
 
     auto draw_scaled_pixbuf = [&](Glib::RefPtr<Gdk::Pixbuf> pixbuf, double alpha) {
@@ -1569,7 +1600,8 @@ void MainWindow::load_image_and_heatmap_to_drawing_area(
     const std::string& heatmap_path,
     Glib::RefPtr<Gdk::Pixbuf>& image_pixbuf,
     Glib::RefPtr<Gdk::Pixbuf>& heatmap_pixbuf,
-    Gtk::DrawingArea* target_drawing_area)
+    Gtk::DrawingArea* target_drawing_area,
+    double& updated_scale)
 {
     try {
         image_pixbuf = Gdk::Pixbuf::create_from_file(image_path);
@@ -1579,6 +1611,24 @@ void MainWindow::load_image_and_heatmap_to_drawing_area(
                 ->scale_simple(image_pixbuf->get_width(), image_pixbuf->get_height(), Gdk::INTERP_BILINEAR);
         } else {
             heatmap_pixbuf.reset();  // Clear
+        }
+
+        // Initialize zoom to fit the image to the drawing area
+        if (target_drawing_area && image_pixbuf) {
+            auto allocation = target_drawing_area->get_allocation();
+            int area_w = allocation.get_width();
+            int area_h = allocation.get_height();
+
+            int img_w = image_pixbuf->get_width();
+            int img_h = image_pixbuf->get_height();
+
+            double scale_x = static_cast<double>(area_w) / img_w;
+            double scale_y = static_cast<double>(area_h) / img_h;
+            updated_scale = std::min(scale_x, scale_y);
+
+            int zoomed_w = img_w * updated_scale;
+            int zoomed_h = img_h * updated_scale;
+            target_drawing_area->set_size_request(zoomed_w, zoomed_h);
         }
 
         if (target_drawing_area) {
@@ -3078,75 +3128,91 @@ void MainWindow::on_model1_version_selection_changed()
 
 void MainWindow::on_model1_anomaly_score_dist_zoom_in_clicked()
 {
-    if (!m_model1_anomaly_score_dist_pixbuf)
-    {
-        std::cerr << "No image loaded for zooming." << std::endl;
-        return;
-    }
-
-    // Zoom in
     const double zoom_step = 0.1;
-    m_model1_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step);
+    double new_zoom_scale;
 
-    // Limit zoom factor
-    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+    auto zoomed_pixbuf = scale_pixbuf(
+        m_model1_anomaly_score_dist_pixbuf,
+        m_model1_anomaly_score_dist_zoom_scale,
+        1.0 + zoom_step,
+        new_zoom_scale);
 
-    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
-    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
-
-    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
-        new_width, new_height, Gdk::INTERP_BILINEAR);
-
-    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    if (zoomed_pixbuf)
+    {
+        m_model1_anomaly_score_dist_zoom_scale = new_zoom_scale;
+        m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    }
 }
 
 void MainWindow::on_model1_anomaly_score_dist_zoom_out_clicked()
 {
-    if (!m_model1_anomaly_score_dist_pixbuf)
-    {
-        std::cerr << "No image loaded for zooming." << std::endl;
-        return;
-    }
-    
-    // Zoom out
     const double zoom_step = 0.1;
-    m_model1_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step);
+    double new_zoom_scale;
 
-    // Limit zoom factor
-    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+    auto zoomed_pixbuf = scale_pixbuf(
+        m_model1_anomaly_score_dist_pixbuf,
+        m_model1_anomaly_score_dist_zoom_scale,
+        1.0 / (1.0 + zoom_step),
+        new_zoom_scale);
 
-    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
-    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
-
-    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
-        new_width, new_height, Gdk::INTERP_BILINEAR);
-
-    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    if (zoomed_pixbuf)
+    {
+        m_model1_anomaly_score_dist_zoom_scale = new_zoom_scale;
+        m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    }
 }
 
-bool MainWindow::on_model1_anomaly_score_dist_image_scroll(GdkEventScroll* event)
+void MainWindow::on_model1_anomaly_heatmap_zoom_in_clicked()
 {
     const double zoom_step = 0.1;
+    m_model1_anomaly_heatmap_zoom_scale = std::clamp(m_model1_anomaly_heatmap_zoom_scale * (1.0 + zoom_step), 0.1, 10.0);
+    
+    if (m_model1_test_image_drawing_area)
+    {
+        int img_w = m_model1_test_img_pixbuf->get_width();
+        int img_h = m_model1_test_img_pixbuf->get_height();
+        int new_w = img_w * m_model1_anomaly_heatmap_zoom_scale;
+        int new_h = img_h * m_model1_anomaly_heatmap_zoom_scale;
+        m_model1_test_image_drawing_area->set_size_request(new_w, new_h);
+        m_model1_test_image_drawing_area->queue_draw();
+    }
+}
 
-    if (event->direction == GDK_SCROLL_UP || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y < 0))
-        m_model1_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step); // Zoom in
-    else if (event->direction == GDK_SCROLL_DOWN || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y > 0))
-        m_model1_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step); // Zoom out
-    else
-        return false; // Not handled
+void MainWindow::on_model1_anomaly_heatmap_zoom_out_clicked()
+{
+    const double zoom_step = 0.1;
+    m_model1_anomaly_heatmap_zoom_scale = std::clamp(m_model1_anomaly_heatmap_zoom_scale / (1.0 + zoom_step), 0.1, 10.0);
+    
+    if (m_model1_test_image_drawing_area)
+    {
+        int img_w = m_model1_test_img_pixbuf->get_width();
+        int img_h = m_model1_test_img_pixbuf->get_height();
+        int new_w = img_w * m_model1_anomaly_heatmap_zoom_scale;
+        int new_h = img_h * m_model1_anomaly_heatmap_zoom_scale;
+        m_model1_test_image_drawing_area->set_size_request(new_w, new_h);
+        m_model1_test_image_drawing_area->queue_draw();
+    }
+}
 
-    // Limit zoom factor
-    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+Glib::RefPtr<Gdk::Pixbuf> MainWindow::scale_pixbuf(
+    const Glib::RefPtr<Gdk::Pixbuf>& original_pixbuf,
+    double current_scale,
+    double scale_factor,
+    double& updated_scale)
+{
+    if (!original_pixbuf)
+    {
+        std::cerr << "No image loaded for scaling." << std::endl;
+        return {};
+    }
 
-    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
-    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
+    // Calculate the new zoom scale
+    updated_scale = std::clamp(current_scale * scale_factor, 0.1, 10.0);
 
-    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
-        new_width, new_height, Gdk::INTERP_BILINEAR);
+    int new_width = original_pixbuf->get_width() * updated_scale;
+    int new_height = original_pixbuf->get_height() * updated_scale;
 
-    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
-
-    return true; // Event handled
+    return original_pixbuf->scale_simple(new_width, new_height, Gdk::INTERP_BILINEAR);
 }
 
 void MainWindow::on_model2_existing_models_selection_changed()
@@ -3202,29 +3268,72 @@ void MainWindow::on_model2_version_selection_changed()
     }
 }
 
-bool MainWindow::on_model2_anomaly_score_dist_image_scroll(GdkEventScroll* event)
+void MainWindow::on_model2_anomaly_score_dist_zoom_in_clicked()
 {
     const double zoom_step = 0.1;
+    double new_zoom_scale;
 
-    if (event->direction == GDK_SCROLL_UP || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y < 0))
-        m_model2_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step); // Zoom in
-    else if (event->direction == GDK_SCROLL_DOWN || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y > 0))
-        m_model2_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step); // Zoom out
-    else
-        return false; // Not handled
+    auto zoomed_pixbuf = scale_pixbuf(
+        m_model2_anomaly_score_dist_pixbuf,
+        m_model2_anomaly_score_dist_zoom_scale,
+        1.0 + zoom_step,
+        new_zoom_scale);
 
-    // Limit zoom factor
-    m_model2_anomaly_score_dist_zoom_scale = std::clamp(m_model2_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+    if (zoomed_pixbuf)
+    {
+        m_model2_anomaly_score_dist_zoom_scale = new_zoom_scale;
+        m_model2_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    }
+}
 
-    int new_width = m_model2_anomaly_score_dist_pixbuf->get_width() * m_model2_anomaly_score_dist_zoom_scale;
-    int new_height = m_model2_anomaly_score_dist_pixbuf->get_height() * m_model2_anomaly_score_dist_zoom_scale;
+void MainWindow::on_model2_anomaly_score_dist_zoom_out_clicked()
+{
+    const double zoom_step = 0.1;
+    double new_zoom_scale;
 
-    auto zoomed_pixbuf = m_model2_anomaly_score_dist_pixbuf->scale_simple(
-        new_width, new_height, Gdk::INTERP_BILINEAR);
+    auto zoomed_pixbuf = scale_pixbuf(
+        m_model2_anomaly_score_dist_pixbuf,
+        m_model2_anomaly_score_dist_zoom_scale,
+        1.0 / (1.0 + zoom_step),
+        new_zoom_scale);
 
-    m_model2_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    if (zoomed_pixbuf)
+    {
+        m_model2_anomaly_score_dist_zoom_scale = new_zoom_scale;
+        m_model2_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+    }
+}
 
-    return true; // Event handled
+void MainWindow::on_model2_anomaly_heatmap_zoom_in_clicked()
+{
+    const double zoom_step = 0.1;
+    m_model2_anomaly_heatmap_zoom_scale = std::clamp(m_model2_anomaly_heatmap_zoom_scale * (1.0 + zoom_step), 0.1, 10.0);
+    
+    if (m_model2_test_image_drawing_area)
+    {
+        int img_w = m_model2_test_img_pixbuf->get_width();
+        int img_h = m_model2_test_img_pixbuf->get_height();
+        int new_w = img_w * m_model2_anomaly_heatmap_zoom_scale;
+        int new_h = img_h * m_model2_anomaly_heatmap_zoom_scale;
+        m_model2_test_image_drawing_area->set_size_request(new_w, new_h);
+        m_model2_test_image_drawing_area->queue_draw();
+    }
+}
+
+void MainWindow::on_model2_anomaly_heatmap_zoom_out_clicked()
+{
+    const double zoom_step = 0.1;
+    m_model2_anomaly_heatmap_zoom_scale = std::clamp(m_model2_anomaly_heatmap_zoom_scale / (1.0 + zoom_step), 0.1, 10.0);
+    
+    if (m_model2_test_image_drawing_area)
+    {
+        int img_w = m_model2_test_img_pixbuf->get_width();
+        int img_h = m_model2_test_img_pixbuf->get_height();
+        int new_w = img_w * m_model2_anomaly_heatmap_zoom_scale;
+        int new_h = img_h * m_model2_anomaly_heatmap_zoom_scale;
+        m_model2_test_image_drawing_area->set_size_request(new_w, new_h);
+        m_model2_test_image_drawing_area->queue_draw();
+    }
 }
 
 void MainWindow::on_eval_model_clicked()
@@ -3375,10 +3484,6 @@ void MainWindow::on_eval_model_clicked()
                 if (!m_model1_anomaly_score_dist_pixbuf) {
                     std::cerr << "Failed to load score distribution image." << std::endl;
                 } else {
-                    //
-                    // Scale the image to fit the widget
-                    //
-                    
                     // Get original size of the pixbuf
                     int img_width = m_model1_anomaly_score_dist_pixbuf->get_width();
                     int img_height = m_model1_anomaly_score_dist_pixbuf->get_height();
@@ -3392,21 +3497,26 @@ void MainWindow::on_eval_model_clicked()
                         widget_width = img_width;
                         widget_height = img_height;
                     }
-                
+
                     // Compute scale factor to fit within widget
-                    double scale = std::min(
+                    double scale_factor = std::min(
                         (double)widget_width / img_width,
                         (double)widget_height / img_height
                     );
+
+                    // Scale the image to fit the widget
+                    double new_zoom_scale;
+                    auto zoomed_pixbuf = scale_pixbuf(
+                        m_model1_anomaly_score_dist_pixbuf,
+                        m_model1_anomaly_score_dist_zoom_scale,
+                        scale_factor,
+                        new_zoom_scale);
                 
-                    int scaled_width = static_cast<int>(img_width * scale);
-                    int scaled_height = static_cast<int>(img_height * scale);
-
-                    // Scale the image
-                    auto scaled_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(scaled_width, scaled_height, Gdk::INTERP_BILINEAR);
-
-                    // Set it to the widget
-                    m_model1_anomaly_score_dist_img_widget->set(scaled_pixbuf);                
+                    if (zoomed_pixbuf)
+                    {
+                        m_model1_anomaly_score_dist_zoom_scale = new_zoom_scale;
+                        m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+                    }               
                 }
             }
             
@@ -3421,10 +3531,6 @@ void MainWindow::on_eval_model_clicked()
                 if (!m_model2_anomaly_score_dist_pixbuf) {
                     std::cerr << "Failed to load score distribution image." << std::endl;
                 } else {
-                    //
-                    // Scale the image to fit the widget
-                    //
-
                     // Get original size of the pixbuf
                     int img_width = m_model2_anomaly_score_dist_pixbuf->get_width();
                     int img_height = m_model2_anomaly_score_dist_pixbuf->get_height();
@@ -3438,20 +3544,26 @@ void MainWindow::on_eval_model_clicked()
                         widget_width = img_width;
                         widget_height = img_height;
                     }
-                
+
                     // Compute scale factor to fit within widget
-                    double scale = std::min(
+                    double scale_factor = std::min(
                         (double)widget_width / img_width,
                         (double)widget_height / img_height
                     );
+
+                    // Scale the image to fit the widget
+                    double new_zoom_scale;
+                    auto zoomed_pixbuf = scale_pixbuf(
+                        m_model2_anomaly_score_dist_pixbuf,
+                        m_model2_anomaly_score_dist_zoom_scale,
+                        scale_factor,
+                        new_zoom_scale);
                 
-                    int scaled_width = static_cast<int>(img_width * scale);
-                    int scaled_height = static_cast<int>(img_height * scale);
-
-                    // Scale the image
-                    auto scaled_pixbuf = m_model2_anomaly_score_dist_pixbuf->scale_simple(scaled_width, scaled_height, Gdk::INTERP_BILINEAR);
-
-                    m_model2_anomaly_score_dist_img_widget->set(scaled_pixbuf);
+                    if (zoomed_pixbuf)
+                    {
+                        m_model2_anomaly_score_dist_zoom_scale = new_zoom_scale;
+                        m_model2_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+                    }
                 }
             }
 
@@ -3485,7 +3597,8 @@ void MainWindow::activate_eval_testing_images_row(Gtk::ListBoxRow* row)
         m_model1_image_to_heatmap_map[image_path.string()].first,
         m_model1_test_img_pixbuf,
         m_model1_test_heatmap_pixbuf,
-        m_model1_test_image_drawing_area
+        m_model1_test_image_drawing_area,
+        m_model1_anomaly_heatmap_zoom_scale
     );
     m_model1_test_img_anomaly_score_lbl->set_text(
         std::to_string(m_model1_image_to_heatmap_map[image_path.string()].second)
@@ -3496,7 +3609,8 @@ void MainWindow::activate_eval_testing_images_row(Gtk::ListBoxRow* row)
         m_model2_image_to_heatmap_map[image_path.string()].first,
         m_model2_test_img_pixbuf,
         m_model2_test_heatmap_pixbuf,
-        m_model2_test_image_drawing_area
+        m_model2_test_image_drawing_area,
+        m_model2_anomaly_heatmap_zoom_scale
     );
     m_model2_test_img_anomaly_score_lbl->set_text(
         std::to_string(m_model2_image_to_heatmap_map[image_path.string()].second)

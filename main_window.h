@@ -130,8 +130,9 @@ protected:
     Gtk::Image *m_model1_anomaly_score_dist_img_widget;
     Gtk::Button *m_model1_anomaly_score_dist_zoom_in_btn;
     Gtk::Button *m_model1_anomaly_score_dist_zoom_out_btn;
-    Gtk::EventBox* m_model1_anomaly_score_dist_img_ebox;
     Gtk::DrawingArea *m_model1_test_image_drawing_area;
+    Gtk::Button *m_model1_anomaly_heatmap_zoom_in_btn;
+    Gtk::Button *m_model1_anomaly_heatmap_zoom_out_btn;
     Gtk::Label *m_model1_test_img_anomaly_score_lbl;
 
     Gtk::ComboBoxText *m_model2_existing_models_cbox;
@@ -140,8 +141,11 @@ protected:
     Gtk::Label *m_model2_f1_score_lbl;
     Gtk::Label *m_model2_area_under_roc_lbl;
     Gtk::Image *m_model2_anomaly_score_dist_img_widget;
-    Gtk::EventBox* m_model2_anomaly_score_dist_img_ebox;
+    Gtk::Button *m_model2_anomaly_score_dist_zoom_in_btn;
+    Gtk::Button *m_model2_anomaly_score_dist_zoom_out_btn;
     Gtk::DrawingArea *m_model2_test_image_drawing_area;
+    Gtk::Button *m_model2_anomaly_heatmap_zoom_in_btn;
+    Gtk::Button *m_model2_anomaly_heatmap_zoom_out_btn;
     Gtk::Label *m_model2_test_img_anomaly_score_lbl;
 
     Gtk::Button *m_eval_model_btn;
@@ -179,19 +183,24 @@ protected:
         Glib::RefPtr<Gdk::Pixbuf> base_pixbuf,
         Glib::RefPtr<Gdk::Pixbuf> overlay_pixbuf,
         Gtk::DrawingArea* area,
-        double overlay_alpha = 0.5f);
+        double overlay_alpha = 0.5f,
+        double zoom_scale = 0.0f);
     void on_auto_split_clicked();
     void on_test_images_refresh_clicked();
     void on_add_test_images_clicked();
     void on_remove_test_images_clicked();
     void on_model1_existing_models_selection_changed();
     void on_model1_version_selection_changed();
-    bool on_model1_anomaly_score_dist_image_scroll(GdkEventScroll* event);
     void on_model1_anomaly_score_dist_zoom_in_clicked();
     void on_model1_anomaly_score_dist_zoom_out_clicked();
+    void on_model1_anomaly_heatmap_zoom_in_clicked();
+    void on_model1_anomaly_heatmap_zoom_out_clicked();
     void on_model2_existing_models_selection_changed();
     void on_model2_version_selection_changed();
-    bool on_model2_anomaly_score_dist_image_scroll(GdkEventScroll* event);
+    void on_model2_anomaly_score_dist_zoom_in_clicked();
+    void on_model2_anomaly_score_dist_zoom_out_clicked();
+    void on_model2_anomaly_heatmap_zoom_in_clicked();
+    void on_model2_anomaly_heatmap_zoom_out_clicked();
     void on_eval_model_clicked();
     void on_eval_back_clicked();
     void on_eval_next_clicked();
@@ -238,6 +247,7 @@ private:
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_train_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_wizard_test_heatmap_pixbuf;
+    double m_wizard_anomaly_heatmap_zoom_scale = 1.0;
     bool m_wizard_show_heatmap = true;
     std::unordered_map<std::string, std::pair<std::string, float>> m_image_to_heatmap_map;
     double m_auroc_value = 0.0;
@@ -246,6 +256,7 @@ private:
     Glib::RefPtr<Gdk::Pixbuf> m_model1_test_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_model1_test_heatmap_pixbuf;
     double m_model1_anomaly_score_dist_zoom_scale = 1.0;
+    double m_model1_anomaly_heatmap_zoom_scale = 1.0;
     std::unordered_map<std::string, std::pair<std::string, float>> m_model1_image_to_heatmap_map;
     double m_model1_auroc_value = 0.0;
     double m_model1_f1_value = 0.0;
@@ -253,6 +264,7 @@ private:
     Glib::RefPtr<Gdk::Pixbuf> m_model2_test_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_model2_test_heatmap_pixbuf;
     double m_model2_anomaly_score_dist_zoom_scale = 1.0;
+    double m_model2_anomaly_heatmap_zoom_scale = 1.0;
     std::unordered_map<std::string, std::pair<std::string, float>> m_model2_image_to_heatmap_map;
     double m_model2_auroc_value = 0.0;
     double m_model2_f1_value = 0.0;
@@ -287,7 +299,8 @@ private:
         const std::string& heatmap_path,
         Glib::RefPtr<Gdk::Pixbuf>& image_pixbuf,
         Glib::RefPtr<Gdk::Pixbuf>& heatmap_pixbuf,
-        Gtk::DrawingArea* target_drawing_area);
+        Gtk::DrawingArea* target_drawing_area,
+        double& updated_scale);
     void load_prediction_results(const std::string& json_path, std::unordered_map<std::string, std::pair<std::string, float>>& image_to_heatmap_map);
     void move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type);
     std::string generate_sha256(const std::string& input);
@@ -295,6 +308,11 @@ private:
     void set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked);
     void populate_testing_images_listbox(Gtk::ListBox& listbox, const std::vector<ImagePrediction>& images, const bool show_anomaly_score = true);
     void activate_eval_testing_images_row(Gtk::ListBoxRow* row);
+    Glib::RefPtr<Gdk::Pixbuf> scale_pixbuf(
+        const Glib::RefPtr<Gdk::Pixbuf>& original_pixbuf,
+        double current_scale,
+        double scale_factor,
+        double& updated_scale);
 };
 
 #endif

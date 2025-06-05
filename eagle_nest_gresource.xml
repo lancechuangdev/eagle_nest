@@ -8,5 +8,7 @@
     <file>performance.svg</file>
     <file>expand.svg</file>
     <file>collapse.svg</file>
+    <file>zoom_in.svg</file>
+    <file>zoom_out.svg</file>
   </gresource>
 </gresources>

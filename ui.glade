@@ -2583,7 +2583,7 @@ Balances how many true issues the system found (recall) and how many of the aler
               </packing>
             </child>
             <child>
-              <!-- n-columns=3 n-rows=12 -->
+              <!-- n-columns=3 n-rows=13 -->
               <object class="GtkGrid">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
@@ -2789,7 +2789,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </packing>
                 </child>
                 <child>
-                  <!-- n-columns=2 n-rows=3 -->
+                  <!-- n-columns=2 n-rows=2 -->
                   <object class="GtkGrid">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
@@ -2841,61 +2841,6 @@ Balances how many true issues the system found (recall) and how many of the aler
                         <property name="top-attach">1</property>
                       </packing>
                     </child>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="hexpand">True</property>
-                        <property name="spacing">5</property>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="halign">start</property>
-                            <property name="label" translatable="yes">Anomaly Score Distribution:</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="model1_anomaly_score_dist_zoom_out_btn">
-                            <property name="label" translatable="yes">-</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">True</property>
-                            <property name="halign">end</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="pack-type">end</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="model1_anomaly_score_dist_zoom_in_btn">
-                            <property name="label" translatable="yes">+</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="pack-type">end</property>
-                            <property name="position">2</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">2</property>
-                        <property name="width">2</property>
-                      </packing>
-                    </child>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -2903,7 +2848,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </packing>
                 </child>
                 <child>
-                  <!-- n-columns=2 n-rows=3 -->
+                  <!-- n-columns=2 n-rows=2 -->
                   <object class="GtkGrid">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
@@ -2955,19 +2900,6 @@ Balances how many true issues the system found (recall) and how many of the aler
                         <property name="top-attach">1</property>
                       </packing>
                     </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="halign">start</property>
-                        <property name="label" translatable="yes">Anomaly Score Distribution:</property>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">2</property>
-                        <property name="width">2</property>
-                      </packing>
-                    </child>
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
@@ -2984,31 +2916,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   <packing>
                     <property name="left-attach">1</property>
                     <property name="top-attach">4</property>
-                    <property name="height">5</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="halign">start</property>
-                    <property name="label" translatable="yes">Anomaly Maps of Testing Images:</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">6</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="halign">start</property>
-                    <property name="label" translatable="yes">Anomaly Maps of Testing Images:</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">2</property>
-                    <property name="top-attach">6</property>
+                    <property name="height">6</property>
                   </packing>
                 </child>
                 <child>
@@ -3033,7 +2941,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">7</property>
+                    <property name="top-attach">8</property>
                   </packing>
                 </child>
                 <child>
@@ -3058,7 +2966,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
-                    <property name="top-attach">7</property>
+                    <property name="top-attach">8</property>
                   </packing>
                 </child>
                 <child>
@@ -3111,7 +3019,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
-                    <property name="top-attach">9</property>
+                    <property name="top-attach">10</property>
                   </packing>
                 </child>
                 <child>
@@ -3124,7 +3032,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">11</property>
+                    <property name="top-attach">12</property>
                     <property name="width">3</property>
                   </packing>
                 </child>
@@ -3199,7 +3107,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">8</property>
+                    <property name="top-attach">9</property>
                   </packing>
                 </child>
                 <child>
@@ -3232,7 +3140,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
-                    <property name="top-attach">8</property>
+                    <property name="top-attach">9</property>
                   </packing>
                 </child>
                 <child>
@@ -3268,7 +3176,7 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">10</property>
+                    <property name="top-attach">11</property>
                     <property name="width">3</property>
                   </packing>
                 </child>
@@ -3307,33 +3215,68 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
-                    <property name="top-attach">9</property>
+                    <property name="top-attach">10</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEventBox" id="model1_anomaly_score_dist_img_ebox">
+                  <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="hexpand">True</property>
+                    <property name="spacing">5</property>
                     <child>
-                      <object class="GtkScrolledWindow">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Anomaly Score Distribution:</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model1_anomaly_score_dist_zoom_out_btn">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
-                        <property name="hexpand">True</property>
-                        <property name="vexpand">True</property>
-                        <property name="shadow-type">in</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
                         <child>
-                          <object class="GtkViewport">
+                          <object class="GtkImage">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <child>
-                              <object class="GtkImage" id="model1_anomaly_score_dist_img_widget">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                              </object>
-                            </child>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_out.svg</property>
                           </object>
                         </child>
                       </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model1_anomaly_score_dist_zoom_in_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_in.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">2</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
@@ -3342,26 +3285,111 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEventBox" id="model2_anomaly_score_dist_img_ebox">
+                  <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="hexpand">True</property>
+                    <property name="spacing">5</property>
                     <child>
-                      <object class="GtkScrolledWindow">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Anomaly Score Distribution:</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model2_anomaly_score_dist_zoom_out_btn">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
-                        <property name="hexpand">True</property>
-                        <property name="vexpand">True</property>
-                        <property name="shadow-type">in</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
                         <child>
-                          <object class="GtkViewport">
+                          <object class="GtkImage">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <child>
-                              <object class="GtkImage" id="model2_anomaly_score_dist_img_widget">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                              </object>
-                            </child>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_out.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model2_anomaly_score_dist_zoom_in_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_in.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="left-attach">2</property>
+                    <property name="top-attach">5</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="vexpand">True</property>
+                    <property name="shadow-type">in</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkImage" id="model1_anomaly_score_dist_img_widget">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">6</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="vexpand">True</property>
+                    <property name="shadow-type">in</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkImage" id="model2_anomaly_score_dist_img_widget">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
                           </object>
                         </child>
                       </object>
@@ -3369,7 +3397,138 @@ Balances how many true issues the system found (recall) and how many of the aler
                   </object>
                   <packing>
                     <property name="left-attach">2</property>
-                    <property name="top-attach">5</property>
+                    <property name="top-attach">6</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="spacing">5</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Anomaly Maps of Testing Images:</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model1_anomaly_heatmap_zoom_out_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_out.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model1_anomaly_heatmap_zoom_in_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_in.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="left-attach">0</property>
+                    <property name="top-attach">7</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="spacing">5</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="label" translatable="yes">Anomaly Maps of Testing Images:</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model2_anomaly_heatmap_zoom_out_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_out.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="model2_anomaly_heatmap_zoom_in_btn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="always-show-image">True</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="pixbuf">resource:///com/example/eagle_nest/zoom_in.svg</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="pack-type">end</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="left-attach">2</property>
+                    <property name="top-attach">7</property>
                   </packing>
                 </child>
                 <child>
