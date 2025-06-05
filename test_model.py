@@ -70,18 +70,23 @@ def build_dataloader(images, batch_size=32):
     dataset = InferenceDataset(images)
     return DataLoader(dataset, batch_size=batch_size, collate_fn=ImageBatch.collate)
 
-def main(model_name: str, resume_from_ckpt: str = ""):
-    print(f"[Info] Testing {model_name} with saved checkpoint")
-    test_dir = wip_dataset_dir / "test"
+def main(model_name: str, model_version: str, resume_from_ckpt: str = ""):
+    print(f"[Info] Testing {model_name} {model_version} with saved checkpoint")
 
     if not model_name:
         raise ValueError("[Error] Model name is required.")
+
+    if not model_version:
+        raise ValueError("[Error] Model version is required.")
 
     if resume_from_ckpt:
         print(f"[Info] Loading model checkpoint...")
         model = EfficientAd.load_from_checkpoint(resume_from_ckpt)
     else:
         raise ValueError("[Error] Model checkpoint is required.")
+
+    output_dir = wip_dataset_dir / "test" / model_name / model_version
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     print("[Info] Initializing dataset...")
     images = load_images(resize_dims=resize_dims)
@@ -109,7 +114,7 @@ def main(model_name: str, resume_from_ckpt: str = ""):
     if num_batches == 0:
         raise ValueError("[Error] No predictions found.")
 
-    heatmap_dir = test_dir / "heatmap"
+    heatmap_dir = output_dir / "heatmap"
     heatmap_dir.mkdir(parents=True, exist_ok=True)
     results = []
 
@@ -159,7 +164,7 @@ def main(model_name: str, resume_from_ckpt: str = ""):
             })
 
     # Save JSON results
-    with open(test_dir / "pred_results.json", "w") as f:
+    with open(output_dir / "pred_results.json", "w") as f:
         json.dump(results, f, indent=4)
 
     print("[Info] Generating anomaly score distribution plot...")
@@ -178,7 +183,7 @@ def main(model_name: str, resume_from_ckpt: str = ""):
     plt.grid(True)
 
     # Save the plot image
-    plot_path = test_dir / "score_distribution.png"
+    plot_path = output_dir / "score_distribution.png"
     plt.savefig(plot_path, bbox_inches="tight")
     plt.close()
     print(f"[Info] Plot saved.")
@@ -188,8 +193,9 @@ def main(model_name: str, resume_from_ckpt: str = ""):
 if __name__ == "__main__":
     try:
         model_name = sys.argv[1] if len(sys.argv) > 1 else ""
-        resume_from_ckpt = sys.argv[2] if len(sys.argv) > 2 else ""
-        main(model_name, resume_from_ckpt)
+        model_version = sys.argv[2] if len(sys.argv) > 2 else ""
+        resume_from_ckpt = sys.argv[3] if len(sys.argv) > 3 else ""
+        main(model_name, model_version, resume_from_ckpt)
         sys.exit(0)  # Success
     except Exception as e:
         print(f"[Error] Error during testing: {e}", file=sys.stderr)

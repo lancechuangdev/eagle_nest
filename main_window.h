@@ -63,6 +63,7 @@ protected:
 
     // Model Training Startup
     Gtk::Button *m_start_train_model_btn;
+    Gtk::Button *m_model_performance_evaluation_btn;
 
     // Model Training Stack
     Gtk::Stack *m_training_stack;
@@ -120,6 +121,37 @@ protected:
     Gtk::TextView *m_model_comment_to_save_tview;
     Gtk::Button *m_save_model_btn;
 
+    // Model Performance Evaluation
+    Gtk::ComboBoxText *m_model1_existing_models_cbox;
+    Gtk::ComboBoxText *m_model1_version_cbox;
+    Gtk::TextView *m_model1_comment_tview;
+    Gtk::Label *m_model1_f1_score_lbl;
+    Gtk::Label *m_model1_area_under_roc_lbl;
+    Gtk::Image *m_model1_anomaly_score_dist_img_widget;
+    Gtk::Button *m_model1_anomaly_score_dist_zoom_in_btn;
+    Gtk::Button *m_model1_anomaly_score_dist_zoom_out_btn;
+    Gtk::EventBox* m_model1_anomaly_score_dist_img_ebox;
+    Gtk::DrawingArea *m_model1_test_image_drawing_area;
+    Gtk::Label *m_model1_test_img_anomaly_score_lbl;
+
+    Gtk::ComboBoxText *m_model2_existing_models_cbox;
+    Gtk::ComboBoxText *m_model2_version_cbox;
+    Gtk::TextView *m_model2_comment_tview;
+    Gtk::Label *m_model2_f1_score_lbl;
+    Gtk::Label *m_model2_area_under_roc_lbl;
+    Gtk::Image *m_model2_anomaly_score_dist_img_widget;
+    Gtk::EventBox* m_model2_anomaly_score_dist_img_ebox;
+    Gtk::DrawingArea *m_model2_test_image_drawing_area;
+    Gtk::Label *m_model2_test_img_anomaly_score_lbl;
+
+    Gtk::Button *m_eval_model_btn;
+    Gtk::Switch *m_eval_show_anomaly_heatmap_switch;
+    Gtk::Revealer *m_eval_test_images_list_revealer;
+    Gtk::ListBox *m_eval_test_images_lbox;
+    Gtk::Button *m_eval_back_btn;
+    Gtk::Button *m_eval_next_btn;
+    Gtk::Button *m_eval_placeholder_btn;
+
     // Key events
     bool on_key_press_event(GdkEventKey *key_event) override;
     bool on_key_release_event(GdkEventKey *key_event) override;
@@ -131,6 +163,7 @@ protected:
     void on_dataset_sources_refresh_clicked();
     void on_menu_toggled();
     void on_start_train_model_clicked();
+    void on_model_performance_evaluation_clicked();
     void on_existing_model_selection_changed();
     void on_model_version_selection_changed();
     void on_training_wizard_image_refresh_clicked();
@@ -151,7 +184,18 @@ protected:
     void on_test_images_refresh_clicked();
     void on_add_test_images_clicked();
     void on_remove_test_images_clicked();
-
+    void on_model1_existing_models_selection_changed();
+    void on_model1_version_selection_changed();
+    bool on_model1_anomaly_score_dist_image_scroll(GdkEventScroll* event);
+    void on_model1_anomaly_score_dist_zoom_in_clicked();
+    void on_model1_anomaly_score_dist_zoom_out_clicked();
+    void on_model2_existing_models_selection_changed();
+    void on_model2_version_selection_changed();
+    bool on_model2_anomaly_score_dist_image_scroll(GdkEventScroll* event);
+    void on_eval_model_clicked();
+    void on_eval_back_clicked();
+    void on_eval_next_clicked();
+    
 private:
     struct ImageInfo {
         std::string img_id; // Unique identifier for the image
@@ -198,17 +242,33 @@ private:
     std::unordered_map<std::string, std::pair<std::string, float>> m_image_to_heatmap_map;
     double m_auroc_value = 0.0;
     double m_f1_value = 0.0;
+    Glib::RefPtr<Gdk::Pixbuf> m_model1_anomaly_score_dist_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_model1_test_img_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_model1_test_heatmap_pixbuf;
+    double m_model1_anomaly_score_dist_zoom_scale = 1.0;
+    std::unordered_map<std::string, std::pair<std::string, float>> m_model1_image_to_heatmap_map;
+    double m_model1_auroc_value = 0.0;
+    double m_model1_f1_value = 0.0;
+    Glib::RefPtr<Gdk::Pixbuf> m_model2_anomaly_score_dist_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_model2_test_img_pixbuf;
+    Glib::RefPtr<Gdk::Pixbuf> m_model2_test_heatmap_pixbuf;
+    double m_model2_anomaly_score_dist_zoom_scale = 1.0;
+    std::unordered_map<std::string, std::pair<std::string, float>> m_model2_image_to_heatmap_map;
+    double m_model2_auroc_value = 0.0;
+    double m_model2_f1_value = 0.0;
+    bool m_eval_show_heatmap = true;
 
     void set_window_title(const std::string &title);
-    void load_existing_models();
+    std::vector<std::string> get_existing_models();
     void update_step_indicator();
     void transition_step(bool step_forward);
     void write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment, const double auroc_value, const double f1_value);
     void populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images);
     void update_selected_images_inclusion(const std::string& inclusion);
     void prepare_wip_dataset(std::string dataset_type);
+    void prepare_wip_scripts();
     bool run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt);
-    bool run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_ckpt);
+    bool run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_version, const std::string& model_ckpt, double& out_auroc_value, double& out_f1_value);
     bool convert_efficient_ad_model_to_onnx(const std::string& model_name);
     void discover_dataset_sources();
     void add_local_dataset_source(size_t datasource_id);
@@ -228,12 +288,13 @@ private:
         Glib::RefPtr<Gdk::Pixbuf>& image_pixbuf,
         Glib::RefPtr<Gdk::Pixbuf>& heatmap_pixbuf,
         Gtk::DrawingArea* target_drawing_area);
-    void load_prediction_results(const std::string& json_path);
+    void load_prediction_results(const std::string& json_path, std::unordered_map<std::string, std::pair<std::string, float>>& image_to_heatmap_map);
     void move_selected_images(std::map<Gtk::CheckButton*, std::string> selected_images, std::string dataset_type);
     std::string generate_sha256(const std::string& input);
     void populate_explorer_test_images_listbox(const std::vector<ImageInfo>& images);
     void set_all_checkboxes(Gtk::ListBox *images_lbox, bool checked);
-    void populate_wizard_test_images_listbox(const std::vector<ImagePrediction>& images);
+    void populate_testing_images_listbox(Gtk::ListBox& listbox, const std::vector<ImagePrediction>& images, const bool show_anomaly_score = true);
+    void activate_eval_testing_images_row(Gtk::ListBoxRow* row);
 };
 
 #endif

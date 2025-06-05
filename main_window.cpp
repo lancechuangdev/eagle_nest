@@ -39,12 +39,190 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_explore_btn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_menu_toggled));
     }
 
+    m_builder->get_widget("explorer_stack", m_explorer_stack);
+
+    m_builder->get_widget("explorer_dataset_sources_rbtn", m_explorer_dataset_sources_rbtn);
+    if (m_explorer_dataset_sources_rbtn)
+    {
+        m_explorer_dataset_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
+    m_builder->get_widget("explorer_training_images_rbtn", m_explorer_training_images_rbtn);
+    if (m_explorer_training_images_rbtn)
+    {
+        m_explorer_training_images_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
+    m_builder->get_widget("explorer_test_images_rbtn", m_explorer_test_images_rbtn);
+    if (m_explorer_test_images_rbtn)
+    {
+        m_explorer_test_images_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+    }
+
+    m_builder->get_widget("dataset_sources_refresh_btn", m_dataset_sources_refresh_btn);
+    if (m_dataset_sources_refresh_btn)
+    {
+        m_dataset_sources_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_sources_refresh_clicked));
+    }
+
+    m_builder->get_widget("dataset_sources_grid", m_dataset_sources_grid);
+    add_dataset_sources_header();
+
+    m_builder->get_widget("dataset_sources_cbox", m_dataset_sources_cbox);
+    m_dataset_sources_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_source_changed));
+
+    m_builder->get_widget("train_image_category_cbox", m_train_image_category_cbox);
+
+    m_builder->get_widget("train_images_refresh_btn", m_train_images_refresh_btn);
+    if (m_train_images_refresh_btn)
+    {
+        m_train_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_train_images_refresh_clicked));
+    }
+
+    m_builder->get_widget("explorer_train_images_lbox", m_explorer_train_images_lbox);
+    // Handle row selection
+    m_explorer_train_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                load_image_to_drawing_area(image_path.string(), m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path << std::endl;
+            }
+        }
+    });
+
+    m_builder->get_widget("explorer_train_image_drawing_area", m_explorer_train_image_drawing_area);
+    if (m_explorer_train_image_drawing_area)
+    {
+        m_explorer_train_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_image_draw(cr, 
+                    m_explorer_train_img_pixbuf, 
+                    Glib::RefPtr<Gdk::Pixbuf>(),
+                    m_explorer_train_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("toggle_all_on_train_btn", m_toggle_all_on_train_btn);
+    if (m_toggle_all_on_train_btn)
+    {
+        m_toggle_all_on_train_btn->signal_clicked().connect([this]() {
+            m_all_selected_on_train = !m_all_selected_on_train;
+        
+            set_all_checkboxes(m_explorer_train_images_lbox, m_all_selected_on_train);
+        
+            // Update the button label
+            m_toggle_all_on_train_btn->set_label(m_all_selected_on_train ? "Unselect All" : "Select All");
+        });
+    }
+
+    m_builder->get_widget("add_train_image_btn", m_add_train_image_btn);
+    if (m_add_train_image_btn)
+    {
+        m_add_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_train_images_clicked));
+    }
+
+    m_builder->get_widget("remove_train_image_btn", m_remove_train_image_btn);
+    if (m_remove_train_image_btn)
+    {
+        m_remove_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_train_images_clicked));
+    }
+
+    m_builder->get_widget("explorer_training_selected_count_lbl", m_explorer_training_selected_count_lbl);
+
+    m_builder->get_widget("explorer_training_total_count_lbl", m_explorer_training_total_count_lbl);
+
+    m_builder->get_widget("test_split_ratio_sbtn", m_test_split_ratio_sbtn);
+
+    m_builder->get_widget("auto_split_btn", m_auto_split_btn);
+    if (m_auto_split_btn)
+    {
+        m_auto_split_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_auto_split_clicked));
+    }
+
+    m_builder->get_widget("dataset_type_cbox", m_dataset_type_cbox);
+
+    m_builder->get_widget("test_image_category_cbox", m_test_image_category_cbox);
+
+    m_builder->get_widget("test_images_refresh_btn", m_test_images_refresh_btn);
+    if (m_test_images_refresh_btn)
+    {
+        m_test_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_test_images_refresh_clicked));
+    }
+
+    m_builder->get_widget("explorer_test_images_lbox", m_explorer_test_images_lbox);
+    // Handle row selection
+    m_explorer_test_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        if (row)
+        {
+            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+            if (path_ptr)
+            {
+                const fs::path& image_path = *path_ptr;
+                load_image_to_drawing_area(image_path.string(), m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
+                std::cout << "Row activated for image: " << image_path << std::endl;
+            }
+        }
+    });
+
+    m_builder->get_widget("explorer_test_image_drawing_area", m_explorer_test_image_drawing_area);
+    if (m_explorer_test_image_drawing_area)
+    {
+        m_explorer_test_image_drawing_area->signal_draw().connect(
+            [this](const Cairo::RefPtr<Cairo::Context>& cr) {
+                return on_image_draw(cr, 
+                    m_explorer_test_img_pixbuf, 
+                    Glib::RefPtr<Gdk::Pixbuf>(),
+                    m_explorer_test_image_drawing_area);
+            }
+        );
+    }
+
+    m_builder->get_widget("toggle_all_on_test_btn", m_toggle_all_on_test_btn);
+    if (m_toggle_all_on_test_btn)
+    {
+        m_toggle_all_on_test_btn->signal_clicked().connect([this]() {
+            m_all_selected_on_test = !m_all_selected_on_test;
+        
+            set_all_checkboxes(m_explorer_test_images_lbox, m_all_selected_on_test);
+        
+            // Update the button label
+            m_toggle_all_on_test_btn->set_label(m_all_selected_on_test ? "Unselect All" : "Select All");
+        });
+    }
+
+    m_builder->get_widget("add_test_image_btn", m_add_test_image_btn);
+    if (m_add_test_image_btn)
+    {
+        m_add_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_test_images_clicked));
+    }
+
+    m_builder->get_widget("remove_test_image_btn", m_remove_test_image_btn);
+    if (m_remove_test_image_btn)
+    {
+        m_remove_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_test_images_clicked));
+    }
+
+    m_builder->get_widget("explorer_test_selected_count_lbl", m_explorer_test_selected_count_lbl);
+
+    m_builder->get_widget("explorer_test_total_count_lbl", m_explorer_test_total_count_lbl);
+
     m_builder->get_widget("content_stack", m_content_stack);
 
     m_builder->get_widget("start_train_model_btn", m_start_train_model_btn);
     if (m_start_train_model_btn)
     {
         m_start_train_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_start_train_model_clicked));
+    }
+
+    m_builder->get_widget("model_performance_evaluation_btn", m_model_performance_evaluation_btn);
+    if (m_model_performance_evaluation_btn)
+    {
+        m_model_performance_evaluation_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model_performance_evaluation_clicked));
     }
 
     m_builder->get_widget("training_stack", m_training_stack);
@@ -288,7 +466,7 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
                 return on_image_draw(cr, 
                     m_wizard_test_img_pixbuf, 
                     m_wizard_show_heatmap ? m_wizard_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
-                    m_wizard_test_image_drawing_area, 
+                    m_wizard_test_image_drawing_area,
                     0.5f);
             }
         );
@@ -319,178 +497,166 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
         m_save_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_save_model_clicked));
     }
 
-    m_builder->get_widget("explorer_stack", m_explorer_stack);
-
-    m_builder->get_widget("explorer_dataset_sources_rbtn", m_explorer_dataset_sources_rbtn);
-    if (m_explorer_dataset_sources_rbtn)
+    m_builder->get_widget("model1_existing_models_cbox", m_model1_existing_models_cbox);
+    if (m_model1_existing_models_cbox)
     {
-        m_explorer_dataset_sources_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+        m_model1_existing_models_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_model1_existing_models_selection_changed));
     }
 
-    m_builder->get_widget("explorer_training_images_rbtn", m_explorer_training_images_rbtn);
-    if (m_explorer_training_images_rbtn)
+    m_builder->get_widget("model1_version_cbox", m_model1_version_cbox);
+    if (m_model1_version_cbox)
     {
-        m_explorer_training_images_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+        m_model1_version_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_model1_version_selection_changed));
     }
 
-    m_builder->get_widget("explorer_test_images_rbtn", m_explorer_test_images_rbtn);
-    if (m_explorer_test_images_rbtn)
+    m_builder->get_widget("model1_comment_tview", m_model1_comment_tview);
+
+    m_builder->get_widget("model1_f1_score_lbl", m_model1_f1_score_lbl);
+
+    m_builder->get_widget("model1_area_under_roc_lbl", m_model1_area_under_roc_lbl);
+
+    m_builder->get_widget("model1_anomaly_score_dist_img_widget", m_model1_anomaly_score_dist_img_widget);
+
+    m_builder->get_widget("model1_anomaly_score_dist_zoom_in_btn", m_model1_anomaly_score_dist_zoom_in_btn);
+    if (m_model1_anomaly_score_dist_zoom_in_btn)
     {
-        m_explorer_test_images_rbtn->signal_toggled().connect(sigc::mem_fun(*this, &MainWindow::on_explorer_toggled));
+        m_model1_anomaly_score_dist_zoom_in_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_score_dist_zoom_in_clicked));
     }
 
-    m_builder->get_widget("dataset_sources_refresh_btn", m_dataset_sources_refresh_btn);
-    if (m_dataset_sources_refresh_btn)
+    m_builder->get_widget("model1_anomaly_score_dist_zoom_out_btn", m_model1_anomaly_score_dist_zoom_out_btn);
+    if (m_model1_anomaly_score_dist_zoom_out_btn)
     {
-        m_dataset_sources_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_sources_refresh_clicked));
+        m_model1_anomaly_score_dist_zoom_out_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_score_dist_zoom_out_clicked));
     }
 
-    m_builder->get_widget("dataset_sources_grid", m_dataset_sources_grid);
-    add_dataset_sources_header();
-
-    m_builder->get_widget("dataset_sources_cbox", m_dataset_sources_cbox);
-    m_dataset_sources_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_dataset_source_changed));
-
-    m_builder->get_widget("train_image_category_cbox", m_train_image_category_cbox);
-
-    m_builder->get_widget("train_images_refresh_btn", m_train_images_refresh_btn);
-    if (m_train_images_refresh_btn)
+    m_builder->get_widget("model1_anomaly_score_dist_img_ebox", m_model1_anomaly_score_dist_img_ebox);
+    if (m_model1_anomaly_score_dist_img_ebox)
     {
-        m_train_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_train_images_refresh_clicked));
+        m_model1_anomaly_score_dist_img_ebox->add_events(Gdk::SCROLL_MASK);
+        m_model1_anomaly_score_dist_img_ebox->signal_scroll_event().connect(
+            sigc::mem_fun(*this, &MainWindow::on_model1_anomaly_score_dist_image_scroll), false);
     }
 
-    m_builder->get_widget("explorer_train_images_lbox", m_explorer_train_images_lbox);
-    // Handle row selection
-    m_explorer_train_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
-        if (row)
-        {
-            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
-            if (path_ptr)
-            {
-                const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path.string(), m_explorer_train_img_pixbuf, m_explorer_train_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path << std::endl;
-            }
-        }
-    });
-
-    m_builder->get_widget("explorer_train_image_drawing_area", m_explorer_train_image_drawing_area);
-    if (m_explorer_train_image_drawing_area)
+    m_builder->get_widget("model1_test_image_drawing_area", m_model1_test_image_drawing_area);
+    if (m_model1_test_image_drawing_area)
     {
-        m_explorer_train_image_drawing_area->signal_draw().connect(
+        m_model1_test_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
                 return on_image_draw(cr, 
-                    m_explorer_train_img_pixbuf, 
-                    Glib::RefPtr<Gdk::Pixbuf>(),
-                    m_explorer_train_image_drawing_area);
+                    m_model1_test_img_pixbuf, 
+                    m_eval_show_heatmap ? m_model1_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
+                    m_model1_test_image_drawing_area,
+                    0.5f);
             }
         );
     }
 
-    m_builder->get_widget("toggle_all_on_train_btn", m_toggle_all_on_train_btn);
-    if (m_toggle_all_on_train_btn)
+    m_builder->get_widget("model1_test_img_anomaly_score_lbl", m_model1_test_img_anomaly_score_lbl);
+
+    m_builder->get_widget("model2_existing_models_cbox", m_model2_existing_models_cbox);
+    if (m_model2_existing_models_cbox)
     {
-        m_toggle_all_on_train_btn->signal_clicked().connect([this]() {
-            m_all_selected_on_train = !m_all_selected_on_train;
-        
-            set_all_checkboxes(m_explorer_train_images_lbox, m_all_selected_on_train);
-        
-            // Update the button label
-            m_toggle_all_on_train_btn->set_label(m_all_selected_on_train ? "Unselect All" : "Select All");
-        });
+        m_model2_existing_models_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_model2_existing_models_selection_changed));
     }
 
-    m_builder->get_widget("add_train_image_btn", m_add_train_image_btn);
-    if (m_add_train_image_btn)
+    m_builder->get_widget("model2_version_cbox", m_model2_version_cbox);
+    if (m_model2_version_cbox)
     {
-        m_add_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_train_images_clicked));
+        m_model2_version_cbox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_model2_version_selection_changed));
     }
 
-    m_builder->get_widget("remove_train_image_btn", m_remove_train_image_btn);
-    if (m_remove_train_image_btn)
+    m_builder->get_widget("model2_comment_tview", m_model2_comment_tview);
+
+    m_builder->get_widget("model2_f1_score_lbl", m_model2_f1_score_lbl);
+
+    m_builder->get_widget("model2_area_under_roc_lbl", m_model2_area_under_roc_lbl);
+
+    m_builder->get_widget("model2_anomaly_score_dist_img_widget", m_model2_anomaly_score_dist_img_widget);
+
+    m_builder->get_widget("model2_anomaly_score_dist_img_ebox", m_model2_anomaly_score_dist_img_ebox);
+    if (m_model2_anomaly_score_dist_img_ebox)
     {
-        m_remove_train_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_train_images_clicked));
+        m_model2_anomaly_score_dist_img_ebox->add_events(Gdk::SCROLL_MASK);
+        m_model2_anomaly_score_dist_img_ebox->signal_scroll_event().connect(
+            sigc::mem_fun(*this, &MainWindow::on_model2_anomaly_score_dist_image_scroll), false);
     }
 
-    m_builder->get_widget("explorer_training_selected_count_lbl", m_explorer_training_selected_count_lbl);
-
-    m_builder->get_widget("explorer_training_total_count_lbl", m_explorer_training_total_count_lbl);
-
-    m_builder->get_widget("test_split_ratio_sbtn", m_test_split_ratio_sbtn);
-
-    m_builder->get_widget("auto_split_btn", m_auto_split_btn);
-    if (m_auto_split_btn)
+    m_builder->get_widget("model2_test_image_drawing_area", m_model2_test_image_drawing_area);
+    if (m_model2_test_image_drawing_area)
     {
-        m_auto_split_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_auto_split_clicked));
-    }
-
-    m_builder->get_widget("dataset_type_cbox", m_dataset_type_cbox);
-
-    m_builder->get_widget("test_image_category_cbox", m_test_image_category_cbox);
-
-    m_builder->get_widget("test_images_refresh_btn", m_test_images_refresh_btn);
-    if (m_test_images_refresh_btn)
-    {
-        m_test_images_refresh_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_test_images_refresh_clicked));
-    }
-
-    m_builder->get_widget("explorer_test_images_lbox", m_explorer_test_images_lbox);
-    // Handle row selection
-    m_explorer_test_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
-        if (row)
-        {
-            auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
-            if (path_ptr)
-            {
-                const fs::path& image_path = *path_ptr;
-                load_image_to_drawing_area(image_path.string(), m_explorer_test_img_pixbuf, m_explorer_test_image_drawing_area);
-                std::cout << "Row activated for image: " << image_path << std::endl;
-            }
-        }
-    });
-
-    m_builder->get_widget("explorer_test_image_drawing_area", m_explorer_test_image_drawing_area);
-    if (m_explorer_test_image_drawing_area)
-    {
-        m_explorer_test_image_drawing_area->signal_draw().connect(
+        m_model2_test_image_drawing_area->signal_draw().connect(
             [this](const Cairo::RefPtr<Cairo::Context>& cr) {
                 return on_image_draw(cr, 
-                    m_explorer_test_img_pixbuf, 
-                    Glib::RefPtr<Gdk::Pixbuf>(),
-                    m_explorer_test_image_drawing_area);
+                    m_model2_test_img_pixbuf, 
+                    m_eval_show_heatmap ? m_model2_test_heatmap_pixbuf : Glib::RefPtr<Gdk::Pixbuf>(), 
+                    m_model2_test_image_drawing_area,
+                    0.5f);
             }
         );
     }
 
-    m_builder->get_widget("toggle_all_on_test_btn", m_toggle_all_on_test_btn);
-    if (m_toggle_all_on_test_btn)
+    m_builder->get_widget("model2_test_img_anomaly_score_lbl", m_model2_test_img_anomaly_score_lbl);
+
+    m_builder->get_widget("eval_model_btn", m_eval_model_btn);
+    if (m_eval_model_btn)
     {
-        // m_toggle_all_on_test_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_toggle_all_on_test_clicked));
-        m_toggle_all_on_test_btn->signal_clicked().connect([this]() {
-            m_all_selected_on_test = !m_all_selected_on_test;
+        m_eval_model_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_eval_model_clicked));
+    }
+
+    m_builder->get_widget("eval_back_btn", m_eval_back_btn);
+    if (m_eval_back_btn)
+    {
+        m_eval_back_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_eval_back_clicked));
+    }
+    
+    m_builder->get_widget("eval_next_btn", m_eval_next_btn);
+    if (m_eval_next_btn)
+    {
+        m_eval_next_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_eval_next_clicked));
+    }
+
+    m_builder->get_widget("eval_expand_collapse_btn", m_eval_placeholder_btn);
+    if (m_eval_placeholder_btn)
+    {
+        if (auto* box = dynamic_cast<Gtk::Box*>(m_eval_placeholder_btn->get_parent())) {        
+            // Remove the placeholder
+            box->remove(*m_eval_placeholder_btn);
         
-            set_all_checkboxes(m_explorer_test_images_lbox, m_all_selected_on_test);
+            // Create the custom button
+            auto expand_collapse_btn = Gtk::make_managed<ExpandCollapseButton>();
         
-            // Update the button label
-            m_toggle_all_on_test_btn->set_label(m_all_selected_on_test ? "Unselect All" : "Select All");
+            // Insert it in the same position
+            box->pack_end(*expand_collapse_btn, Gtk::PACK_SHRINK);
+            expand_collapse_btn->show_all();
+
+            // Connect the signal
+            expand_collapse_btn->signal_toggled.connect([this](bool expanded) {
+                if (expanded) {
+                    m_eval_test_images_lbox->show();
+                } else {
+                    m_eval_test_images_lbox->hide();
+                }
+                m_eval_test_images_list_revealer->set_reveal_child(expanded);
+            });
+        }
+    }
+
+    m_builder->get_widget("eval_test_images_list_revealer", m_eval_test_images_list_revealer);
+
+    m_builder->get_widget("eval_test_images_lbox", m_eval_test_images_lbox);
+    m_eval_test_images_lbox->signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+        activate_eval_testing_images_row(row);
+    });
+
+    m_builder->get_widget("eval_show_anomaly_heatmap_switch", m_eval_show_anomaly_heatmap_switch);
+    if (m_eval_show_anomaly_heatmap_switch)
+    {
+        m_eval_show_anomaly_heatmap_switch->property_active().signal_changed().connect([this]() {
+            m_eval_show_heatmap = m_eval_show_anomaly_heatmap_switch->get_active();
+            m_model1_test_image_drawing_area->queue_draw();
+            m_model2_test_image_drawing_area->queue_draw();
         });
     }
-
-    m_builder->get_widget("add_test_image_btn", m_add_test_image_btn);
-    if (m_add_test_image_btn)
-    {
-        m_add_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_add_test_images_clicked));
-    }
-
-    m_builder->get_widget("remove_test_image_btn", m_remove_test_image_btn);
-    if (m_remove_test_image_btn)
-    {
-        m_remove_test_image_btn->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_remove_test_images_clicked));
-    }
-
-    m_builder->get_widget("explorer_test_selected_count_lbl", m_explorer_test_selected_count_lbl);
-
-    m_builder->get_widget("explorer_test_total_count_lbl", m_explorer_test_total_count_lbl);
 }
 
 MainWindow::~MainWindow()
@@ -533,1013 +699,6 @@ void MainWindow::on_menu_toggled()
     {
         m_content_stack->set_visible_child("page_explore");
     }
-}
-
-void MainWindow::on_start_train_model_clicked()
-{
-    m_active_model_page = "page_training_wizard";
-    m_content_stack->set_visible_child(m_active_model_page);
-    m_training_stack->set_visible_child("page_select_model");
-    m_current_step = 0;
-    m_previous_btn->set_sensitive(false);
-    m_next_btn->set_sensitive(true);
-    update_step_indicator();
-
-    // Create training WIP directory if it doesn't exist
-    if (!std::filesystem::exists(AppPaths::WIP_Path))
-    {
-        std::filesystem::create_directories(AppPaths::WIP_Path);
-    }
-    else // Clear the directory if it already exists
-    {
-        for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
-        {
-            std::filesystem::remove_all(entry.path());
-        }
-    }
-
-    // Copy all python scripts from the install share directory to the WIP directory
-    auto install_share_dir = AppPaths::Install_Share_Dir;
-    auto wip_dir = AppPaths::WIP_Path;
-    for (const auto &entry : std::filesystem::directory_iterator(install_share_dir))
-    {
-        if (entry.path().extension() == ".py")
-        {
-            std::filesystem::copy(entry.path(), wip_dir / entry.path().filename());
-        }
-    }
-
-    // Load all existing trained models and populate the model name combo box
-    load_existing_models();
-}
-
-void MainWindow::load_existing_models()
-{
-    auto models_path = AppPaths::Models_Path;
-
-    m_existing_models_cbox->remove_all(); // Clear existing items
-
-    if (!fs::exists(models_path) || !fs::is_directory(models_path))
-        return;
-
-    for (const auto& entry : fs::directory_iterator(models_path))
-    {
-        if (entry.is_directory())
-        {
-            std::string model_name = entry.path().filename().string();
-            m_existing_models_cbox->append(model_name);
-        }
-    }
-}
-
-void MainWindow::on_existing_model_selection_changed()
-{
-    std::string selected_model = m_existing_models_cbox->get_active_text();
-    if (selected_model.empty())
-        return;
-
-    // Update the model name field
-    m_model_name = selected_model;
-
-    // Clear the model version combo box
-    m_model_version_cbox->remove_all();
-
-    // Populate the model version combo box with available versions
-    auto model_path = AppPaths::Models_Path / selected_model;
-    if (fs::exists(model_path) && fs::is_directory(model_path))
-    {
-        for (const auto& entry : fs::directory_iterator(model_path))
-        {
-            if (entry.is_directory())
-            {
-                std::string version = entry.path().filename().string();
-                m_model_version_cbox->append(version);
-            }
-        }
-    }
-}
-
-void MainWindow::on_model_version_selection_changed()
-{
-    std::string selected_model = m_existing_models_cbox->get_active_text();
-    std::string selected_version = m_model_version_cbox->get_active_text();
-
-    if (selected_model.empty() || selected_version.empty())
-        return;
-
-    // Increment the model version
-    int version_number = std::stoi(selected_version.substr(1));
-    m_model_version = std::string("v") + std::to_string(version_number + 1);    
-
-    // Load the model readme file and populate the comment text view
-    auto model_path = AppPaths::Models_Path / selected_model / selected_version / "model.readme";
-    if (fs::exists(model_path))
-    {
-        std::ifstream ifs(model_path);
-        if (ifs)
-        {
-            json readme_json;
-            ifs >> readme_json;
-            ifs.close();
-
-            // Populate the model comment text view
-            m_model_comment_tview->get_buffer()->set_text(readme_json["comment"]);
-        }
-    }
-    else
-    {
-        std::cerr << "Model readme file not found." << std::endl;
-    }
-}
-
-void MainWindow::on_previous_clicked()
-{
-    if (m_current_step > 0) {
-        --m_current_step;
-        m_training_stack->set_visible_child(m_training_page_names[m_current_step]);
-        m_next_btn->set_sensitive(true);
-    }
-    if (m_current_step == 0) {
-        m_previous_btn->set_sensitive(false);
-    }
-    update_step_indicator();
-    transition_step(false);
-}
-
-void MainWindow::on_next_clicked()
-{
-    if (m_current_step < m_training_page_names.size() - 1) {
-        ++m_current_step;
-        m_training_stack->set_visible_child(m_training_page_names[m_current_step]);
-        m_previous_btn->set_sensitive(true);
-    }
-    if (m_current_step == m_training_page_names.size() - 1) {
-        m_next_btn->set_sensitive(false);
-    }
-    update_step_indicator();
-    transition_step(true);
-}
-
-void MainWindow::on_close_training_wizard_clicked()
-{
-    // Clear the directory if it already exists
-    for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
-    {
-        std::filesystem::remove_all(entry.path());
-    }
-
-    // Reset the training wizard state
-    m_current_step = 0;
-    m_model_name = "";
-    m_model_version = "v1"; // Reset version to v1
-    m_model_size = "";
-    m_model_name_entry->set_text("");
-    m_existing_models_cbox->remove_all();
-    m_model_version_cbox->remove_all();
-    m_model_comment_tview->get_buffer()->set_text("");
-    for (auto* child : m_wizard_train_images_lbox->get_children())
-    {
-        m_wizard_train_images_lbox->remove(*child);
-    }
-    m_wizard_train_img_pixbuf.reset();
-    m_selected_images_on_wizard_listbox.clear();
-    m_wizard_training_selected_count_lbl->set_text("0");
-    m_wizard_training_included_count_lbl->set_text("0");
-    m_wizard_training_total_count_lbl->set_text("0");
-    m_train_model_tview->get_buffer()->set_text("");
-    m_auroc_value = 0.0;
-    m_f1_value = 0.0;
-    m_f1_score_lbl->set_text("");
-    m_area_under_roc_lbl->set_text("");
-    for (auto* child : m_wizard_test_images_lbox->get_children())
-    {
-        m_wizard_test_images_lbox->remove(*child);
-    }
-    m_wizard_test_img_pixbuf.reset();
-    m_wizard_test_heatmap_pixbuf.reset();
-    m_wizard_anomaly_score_dist_img_widget->clear();
-    m_model_name_to_save_lbl->set_text("");
-    m_model_version_to_save_lbl->set_text("");
-    m_model_size_to_save_lbl->set_text("");
-    m_model_comment_to_save_tview->get_buffer()->set_text("");
-    m_previous_btn->set_sensitive(false);
-    m_next_btn->set_sensitive(true);
-
-    m_active_model_page = "page_model_welcome";
-    m_content_stack->set_visible_child(m_active_model_page);
-}
-
-void MainWindow::update_step_indicator() {
-    for (size_t i = 0; i < m_training_step_labels.size(); ++i) {
-        auto current_step_name = m_training_step_labels[i]->get_text();
-        m_training_step_labels[i]->set_markup(i == m_current_step ? "<b><span foreground='blue'>" + current_step_name + "</span></b>" : current_step_name);
-    }
-}
-
-void MainWindow::transition_step(bool step_forward)
-{
-    if (step_forward) // This function is triggered by the next button
-    {
-        if (m_current_step == 1) // Step 0 (Select Model) to Step 1 (Select Images)
-        {
-            
-        }
-        else if (m_current_step == 2) // Step 1 (Select Images) to Step 2 (Training)
-        {
-        }
-        else if (m_current_step == 3) // Step 2 (Training) to Step 3 (Testing)
-        {
-            // Update the model name and version labels on Testing page
-            m_model_under_test_lbl->set_text(m_model_name);
-            m_model_version_under_test_lbl->set_text(m_model_version);
-        }
-        else if (m_current_step == 4) // Step 3 (Testing) to Step 4 (Save Model)
-        {
-            m_model_name_to_save_lbl->set_text(m_model_name);
-            m_model_version_to_save_lbl->set_text(m_model_version);
-            m_model_size_to_save_lbl->set_text(m_model_size);
-            m_model_comment_to_save_tview->get_buffer()->set_text(m_model_comment_tview->get_buffer()->get_text());
-        }
-    }
-    else // This function is triggered by the previous button
-    {
-        if (m_current_step == 0) // Step 1 to Step 0
-        {
-
-        }
-        else if (m_current_step == 1) // Step 2 to Step 1
-        {
-            
-        }
-        else
-        {
-            
-        }
-    }
-}
-
-void MainWindow::write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment, const double auroc_value, const double f1_value)
-{
-    // Get current datetime in ISO 8601 format
-    auto now = std::chrono::system_clock::now();
-    std::time_t time_now = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_now), "%Y-%m-%dT%H:%M:%S");
-
-    nlohmann::json readme_json;
-    readme_json["name"] = name;
-    readme_json["version"] = version;
-    readme_json["size"] = size;
-    readme_json["epochs"] = epochs;
-    readme_json["comment"] = comment;
-    readme_json["created_at"] = ss.str();
-    readme_json["auroc"] = auroc_value;
-    readme_json["f1_score"] = f1_value;
-
-    fs::create_directories(AppPaths::WIP_Model_Path);
-    std::ofstream out(AppPaths::WIP_Model_Path / "model.readme");
-    out << std::setw(4) << readme_json << std::endl;
-}
-
-void MainWindow::on_training_wizard_image_refresh_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_training_wizard_image_refresh_btn->set_sensitive(false);
-
-    // Load images in a separate thread
-    std::thread([this]() {
-        std::vector<ImageInfo> images_from_training_set;
-        std::string selected_img_inclusion = m_training_wizard_img_included_cbox->get_active_text();
-        std::string selected_img_category = m_training_wizard_img_category_cbox->get_active_text();
-        int total_training_images_count = 0;
-        int included_training_images_count = 0;
-
-        try
-        {
-            auto dataset_dir = AppPaths::WIP_Dataset_Path;
-            auto dest_json = dataset_dir / "dataset.json";
-
-            // Ensure the dataset directory exists
-            if (!fs::exists(dataset_dir))
-            {
-                fs::create_directories(dataset_dir);
-            }
-
-            // If dest_json does not exist, copy it from the source
-            if (!fs::exists(dest_json))
-            {
-                auto source_json = AppPaths::Dataset_Path / "dataset.json";
-                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
-            }
-
-            // Load existing JSON from destination
-            std::ifstream ifs(dest_json);
-
-            if (!ifs)
-            {
-                std::cerr << "Failed to open dataset.json" << std::endl;
-            }
-            else
-            {
-                json images_json;
-                ifs >> images_json;
-                ifs.close();
-                
-                for (const auto& entry : images_json)
-                {
-                    std::string img_id = entry["img_id"];
-                    std::string src_img_path = entry["src_img_path"];
-                    std::string dest_img_path = entry["dest_img_path"];
-                    std::string source_name = entry["source_name"];
-                    std::string source_type = entry["source_type"];
-                    std::string category = entry["category"];
-                    std::string inclusion = entry["inclusion"];
-                    std::string dataset_type = entry["dataset_type"];
-
-                    // Filter based on dataset type
-                    if (dataset_type != "train")
-                        continue;
-                    
-                    total_training_images_count++;
-
-                    if (inclusion == "Included")
-                        included_training_images_count++;
-                    
-                    // Filter based on inclusion status
-                    if (selected_img_inclusion != inclusion)
-                        continue;
-
-                    // Filter based on category
-                    if (selected_img_category != category)
-                        continue;
-
-                    images_from_training_set.emplace_back(ImageInfo {
-                        img_id,
-                        src_img_path,
-                        dest_img_path,
-                        source_name,
-                        source_type,
-                        category,
-                        inclusion,
-                        dataset_type
-                    });
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "Error while scanning images: " << e.what() << '\n';
-        }
-
-        // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set), included_training_images_count, total_training_images_count]() {
-            populate_wizard_train_images_listbox(imgs);
-            m_toggle_all_on_wizard_btn->set_label("Select All");
-            m_selected_images_on_wizard_listbox.clear();
-            
-            // Update the count labels
-            m_wizard_training_selected_count_lbl->set_text("0");
-            m_wizard_training_included_count_lbl->set_text(std::to_string(included_training_images_count));
-            m_wizard_training_total_count_lbl->set_text(std::to_string(total_training_images_count));
-            
-            // Enable the refresh button again
-            m_training_wizard_image_refresh_btn->set_sensitive(true);
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
-void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images)
-{
-    // clear previous rows
-    for (auto* child : m_wizard_train_images_lbox->get_children())
-    {
-        m_wizard_train_images_lbox->remove(*child);
-    }
-
-    // add one row per image
-    for (const auto& info : images)
-    {
-        auto filename = info.src_img_path.filename().string();
-
-        // Outer vertical box for header and details
-        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
-
-        // Top row: checkbox + filename label + "Info" button
-        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
-
-        // Checkbox
-        auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
-        checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
-        hbox->pack_start(*checkbox, Gtk::PACK_SHRINK);
-        checkbox->signal_toggled().connect([this, checkbox, info]() {
-            bool is_checked = checkbox->get_active();
-            if (is_checked)
-                m_selected_images_on_wizard_listbox[checkbox] = info.img_id;
-            else
-                m_selected_images_on_wizard_listbox.erase(checkbox);
-
-            // Update the count label
-            m_wizard_training_selected_count_lbl->set_text(std::to_string(m_selected_images_on_wizard_listbox.size()));
-        });
-
-        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
-        lbl->set_xalign(0);
-        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
-        lbl->set_tooltip_text(filename);
-        lbl->set_max_width_chars(40);
-        lbl->set_single_line_mode(true);
-
-        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
-
-        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
-        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
-
-        // Detail content
-        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
-        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
-        dataset_type_label->set_xalign(0);
-        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
-        category_label->set_xalign(0);
-        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
-        source_name_label->set_xalign(0);
-        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
-        source_type_label->set_xalign(0);
-        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
-        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
-        img_path_label->set_max_width_chars(40); // Limit display width
-        img_path_label->set_tooltip_text(info.dest_img_path.string());
-        img_path_label->set_xalign(0); // Align left
-        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
-        details_box->set_margin_start(5);
-        details_box->set_margin_end(5);
-        details_box->set_margin_top(5);
-        details_box->set_margin_bottom(5);
-
-        // Wrap detail box in a Revealer
-        auto revealer = Gtk::make_managed<Gtk::Revealer>();
-        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-        revealer->set_transition_duration(200);
-        revealer->add(*details_box);
-        revealer->set_reveal_child(false);  // initially hidden
-
-        // Toggle the Revealer when the button is clicked
-        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
-            revealer->set_reveal_child(expanded);
-        });
-
-        // Pack into vertical container
-        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
-        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
-
-        // Create row and add to listbox
-        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
-        row->add(*vbox);
-
-        // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.dest_img_path));
-
-        // Add the row to the listbox
-        m_wizard_train_images_lbox->append(*row);
-    }
-    m_wizard_train_images_lbox->show_all_children();
-}
-
-void MainWindow::update_selected_images_inclusion(const std::string& inclusion)
-{
-    // Load existing JSON
-    auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
-    std::ifstream ifs(dataset_json);
-    if (!ifs)
-    {
-        std::cerr << "Failed to open dataset.json" << std::endl;
-        return;
-    }
-
-    json images_json;
-    ifs >> images_json;
-    ifs.close();
-
-    // Update the inclusion status
-    for (const auto& [checkbox, img_id] : m_selected_images_on_wizard_listbox)
-    {
-        // Check if the image is already in the dataset
-        auto it = std::find_if(images_json.begin(), images_json.end(),
-            [img_id](const json& entry) {
-                return entry["img_id"] == img_id;
-            });
-        if (it != images_json.end())
-        {
-            // Image found, update its inclusion status
-            (*it)["inclusion"] = inclusion;
-        }
-        else
-        {
-            // Image doesn't exist, add it to the dataset
-            std::cerr << "Image ID not found in dataset.json: " << img_id << std::endl;
-        }
-    }
-
-    // Save the updated JSON
-    std::ofstream ofs(dataset_json);
-    ofs << std::setw(4) << images_json << std::endl;
-}
-
-void MainWindow::on_train_model_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_train_model_btn->set_sensitive(false);
-
-    // Train model in a separate thread
-    std::thread([this]() {
-        if (m_model_name.empty())
-        {
-            std::cerr << "Model name cannot be empty." << std::endl;
-            return;
-        }
-
-        prepare_wip_dataset("train");
-        m_model_size = m_model_size_cbox->get_active_id();
-        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
-        std::string model_ckpt = "";
-        if (m_select_model_rbtn->get_active())
-        {
-            std::string current_version = m_model_version_cbox->get_active_text();
-            model_ckpt = AppPaths::Models_Path/m_model_name/current_version/"model.ckpt";
-        }
-
-        // hallelujah
-        run_train_efficient_ad_model_script(m_model_name, m_model_size, max_epochs, model_ckpt);
-        
-        // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this]() {
-            m_train_model_btn->set_sensitive(true);
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
-void MainWindow::prepare_wip_dataset(std::string dataset_type)
-{
-    try
-    {
-        auto dataset_path = AppPaths::WIP_Dataset_Path / dataset_type;
-        auto normal_dataset_path = dataset_path / "normal";
-        auto abnormal_dataset_path = dataset_path / "abnormal";
-
-        if (fs::exists(normal_dataset_path)) {
-            // Remove all contents inside the dataset/normal directory
-            fs::remove_all(normal_dataset_path);
-        }
-
-        if (fs::exists(abnormal_dataset_path)) {
-            // Remove all contents inside the dataset/abnormal directory
-            fs::remove_all(abnormal_dataset_path);
-        }
-
-        // Recreate the dataset directory and its subdirectories
-        fs::create_directories(dataset_path / "normal");
-        fs::create_directories(dataset_path / "abnormal");
-
-        // Load existing JSON
-        // Copy the image from training set to the WIP directory
-        auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
-        if (!fs::exists(dataset_json))
-        {
-            std::cerr << dataset_json << " does not exist" << std::endl;
-        }
-        else
-        {
-            std::ifstream ifs(dataset_json);
-                
-            if (!ifs)
-            {
-                std::cerr << "Failed to open " << dataset_json << std::endl;
-            }
-            else
-            {
-                json images_json;
-                ifs >> images_json;
-                ifs.close();
-                
-                for (const auto& entry : images_json)
-                {
-                    std::string dest_img_path = entry["dest_img_path"];
-                    std::string img_name = fs::path(dest_img_path).filename();
-                    std::string category = entry["category"];
-                    std::string inclusion = entry["inclusion"];
-                    std::string entry_dataset_type = entry["dataset_type"];
-
-                    // Filter based on inclusion status
-                    if (inclusion != "Included")
-                        continue;
-
-                    // Filter based on dataset type
-                    if (entry_dataset_type != dataset_type)
-                        continue;
-
-                    // Copy the image to the appropriate directory
-                    auto dataset_category_path = dataset_path / category;
-                    fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
-                }
-            }
-        }
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Error while preparing training images: " << e.what() << '\n';
-    }
-}
-
-bool MainWindow::run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt)
-{
-    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
-    std::array<char, 256> buffer_line;
-
-    fs::path script_path = AppPaths::WIP_Path / "train_model.py";
-    std::string cmd =
-        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
-        "conda activate eagle_nest && "
-        "python \"" + script_path.string() + "\" " + model_name + " " + model_size + " " + std::to_string(max_epochs) + " " + model_ckpt +
-        " 2>&1'";  // <-- This redirects stderr to stdout;
-
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        buffer->insert(buffer->end(), "Failed to start script.\n");
-        return false;
-    }
-
-    // char buffer_line[256];
-    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
-        std::string line(buffer_line.data());
-        Glib::signal_idle().connect_once([buffer, line]() {
-            buffer->insert(buffer->end(), line);
-        });
-    }
-
-    int status = pclose(pipe); // Blocks until script finishes
-    int exit_code = 1;
-
-    if (WIFEXITED(status)) {
-        exit_code = WEXITSTATUS(status);
-        if (exit_code != 0) {
-            buffer->insert(buffer->end(), "\nTraining failed with exit code: " + std::to_string(exit_code) + "\n");
-        }
-    } else {
-        buffer->insert(buffer->end(), "\nTraining process did not exit normally.\n");
-    }
-
-    return exit_code == 0; // Return true if the script executed successfully
-}
-
-void MainWindow::on_test_model_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_test_model_btn->set_sensitive(false);
-
-    // Test model in a separate thread
-    std::thread([this]() {
-        if (m_model_name.empty())
-        {
-            std::cerr << "Model name cannot be empty." << std::endl;
-            return;
-        }
-
-        std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
-        bool result = run_test_efficient_ad_model_script(m_model_name, model_ckpt);
-        std::vector<ImagePrediction> images_from_testing_set;
-
-        if (result) {
-            auto wip_testset_dir = AppPaths::WIP_Dataset_Path / "test";
-            auto dest_json = wip_testset_dir / "pred_results.json";
-
-            load_prediction_results(dest_json.string());
-        }
-
-        if (result) {
-            auto dataset_dir = AppPaths::WIP_Dataset_Path;
-            auto dest_json = dataset_dir / "dataset.json";
-
-            // Ensure the dataset directory exists
-            if (!fs::exists(dataset_dir))
-            {
-                fs::create_directories(dataset_dir);
-            }
-
-            // If dest_json does not exist, copy it from the source
-            if (!fs::exists(dest_json))
-            {
-                auto source_json = AppPaths::Dataset_Path / "dataset.json";
-                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
-            }
-
-            // Load existing JSON from destination
-            std::ifstream ifs(dest_json);
-
-            if (!ifs)
-            {
-                std::cerr << "Failed to open dataset.json" << std::endl;
-            }
-            else
-            {
-                json images_json;
-                ifs >> images_json;
-                ifs.close();
-                
-                for (const auto& entry : images_json)
-                {
-                    std::string img_id = entry["img_id"];
-                    std::string src_img_path = entry["src_img_path"];
-                    std::string dest_img_path = entry["dest_img_path"];
-                    std::string source_name = entry["source_name"];
-                    std::string source_type = entry["source_type"];
-                    std::string category = entry["category"];
-                    std::string inclusion = entry["inclusion"];
-                    std::string dataset_type = entry["dataset_type"];
-                    const auto& heatmap_info = m_image_to_heatmap_map[dest_img_path];
-                    std::string heatmap_path = heatmap_info.first;
-                    float anomaly_score = heatmap_info.second;
-
-                    // Filter based on dataset type
-                    if (dataset_type != "test")
-                        continue;
-
-                    // Filter based on inclusion
-                    if (inclusion != "Included")
-                        continue;
-
-                    images_from_testing_set.emplace_back(ImagePrediction {
-                        img_id,
-                        src_img_path,
-                        dest_img_path,
-                        source_name,
-                        source_type,
-                        category,
-                        inclusion,
-                        dataset_type,
-                        heatmap_path,
-                        anomaly_score
-                    });
-                }
-            }
-        }
-
-        // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this, result, imgs = std::move(images_from_testing_set)]() {
-            m_test_model_btn->set_sensitive(true);
-            if (result)
-            {
-                m_f1_score_lbl->set_text(std::to_string(m_f1_value));
-                m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
-                populate_wizard_test_images_listbox(imgs);
-                fs::path score_distr_path = AppPaths::WIP_Dataset_Path / "test" / "score_distribution.png";
-                auto pixbuf = Gdk::Pixbuf::create_from_file(score_distr_path.string());
-                if (!pixbuf) {
-                    std::cerr << "Failed to load score distribution image." << std::endl;
-                } else {
-                    m_wizard_anomaly_score_dist_img_widget->set(pixbuf);
-                }
-            }
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
-bool MainWindow::run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_ckpt)
-{
-    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
-    std::array<char, 256> buffer_line;
-
-    fs::path script_path = AppPaths::WIP_Path / "test_model.py";
-    std::string cmd =
-        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
-        "conda activate eagle_nest && "
-        "python \"" + script_path.string() + "\" " + model_name + " " + model_ckpt +
-        " 2>&1'";  // <-- This redirects stderr to stdout;
-
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        buffer->insert(buffer->end(), "Failed to start script.\n");
-        return false;
-    }
-
-    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
-        std::string line(buffer_line.data());
-
-        // Extract AUROC and F1 Score values using regex
-        std::smatch match;
-        if (std::regex_search(line, match, std::regex("AUROC:\\s*([0-9.]+)"))) {
-            m_auroc_value = std::stod(match[1].str());  // Convert to double
-            m_auroc_value = std::round(m_auroc_value * 1000.0) / 1000.0; // Round to 3 decimal places
-        } else if (std::regex_search(line, match, std::regex("F1 Score:\\s*([0-9.]+)"))) {
-            m_f1_value = std::stod(match[1].str());     // Convert to double
-            m_f1_value = std::round(m_f1_value * 1000.0) / 1000.0; // Round to 3 decimal places
-        }
-
-        Glib::signal_idle().connect_once([buffer, line]() {
-            buffer->insert(buffer->end(), line);
-        });
-    }
-
-    int status = pclose(pipe); // Blocks until script finishes
-    int exit_code = 1;
-
-    if (WIFEXITED(status)) {
-        exit_code = WEXITSTATUS(status);
-        if (exit_code != 0) {
-            buffer->insert(buffer->end(), "\nTesting failed with exit code: " + std::to_string(exit_code) + "\n");
-        }
-    } else {
-        buffer->insert(buffer->end(), "\nTesting process did not exit normally.\n");
-    }
-
-    return exit_code == 0; // Return true if the script executed successfully
-}
-
-void MainWindow::populate_wizard_test_images_listbox(const std::vector<ImagePrediction>& images)
-{
-    // clear previous rows
-    for (auto* child : m_wizard_test_images_lbox->get_children())
-    {
-        m_wizard_test_images_lbox->remove(*child);
-    }
-
-    // add one row per image
-    for (const auto& info : images)
-    {
-        auto filename = info.src_img_path.filename().string();
-
-        // Outer vertical box for header and details
-        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
-
-        // Top row: filename label + "Info" button
-        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
-
-        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
-        lbl->set_xalign(0);
-        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
-        lbl->set_tooltip_text(filename);
-        lbl->set_max_width_chars(40);
-        lbl->set_single_line_mode(true);
-
-        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
-
-        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
-        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
-
-        // Detail content
-        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
-        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
-        dataset_type_label->set_xalign(0);
-        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
-        category_label->set_xalign(0);
-        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
-        source_name_label->set_xalign(0);
-        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
-        source_type_label->set_xalign(0);
-        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
-        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
-        img_path_label->set_max_width_chars(40); // Limit display width
-        img_path_label->set_tooltip_text(info.dest_img_path.string());
-        img_path_label->set_xalign(0); // Align left
-        auto anomaly_score_label = Gtk::make_managed<Gtk::Label>("Anomaly Score" + std::string(": ") + std::to_string(info.anomaly_score));
-        anomaly_score_label->set_xalign(0);
-        details_box->pack_start(*anomaly_score_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
-        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
-        details_box->set_margin_start(5);
-        details_box->set_margin_end(5);
-        details_box->set_margin_top(5);
-        details_box->set_margin_bottom(5);
-
-        // Wrap detail box in a Revealer
-        auto revealer = Gtk::make_managed<Gtk::Revealer>();
-        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-        revealer->set_transition_duration(200);
-        revealer->add(*details_box);
-        revealer->set_reveal_child(false);  // initially hidden
-
-        // Toggle the Revealer when the button is clicked
-        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
-            revealer->set_reveal_child(expanded);
-        });
-
-        // Pack into vertical container
-        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
-        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
-
-        // Create row and add to listbox
-        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
-        row->add(*vbox);
-
-        // Store the path as custom data
-        row->set_data("image_path", new fs::path(info.dest_img_path));
-
-        // Add the row to the listbox
-        m_wizard_test_images_lbox->append(*row);
-    }
-    m_wizard_test_images_lbox->show_all_children();
-}
-
-void MainWindow::load_prediction_results(const std::string& json_path) {
-    m_image_to_heatmap_map.clear();
-    std::ifstream ifs(json_path);
-    if (!ifs) {
-        std::cerr << "Failed to open pred_results.json at " << json_path << std::endl;
-        return;
-    }
-
-    nlohmann::json results;
-    ifs >> results;
-
-    for (const auto& entry : results) {
-        std::string img_path = entry["input_image"];
-        std::string heatmap_path = entry["anomaly_heatmap"];
-        float anomaly_score = entry["anomaly_score"];
-        m_image_to_heatmap_map[img_path] = {heatmap_path, anomaly_score};
-    }
-}
-
-void MainWindow::on_save_model_clicked()
-{
-    // Disable the button to prevent multiple clicks
-    m_save_model_btn->set_sensitive(false);
-
-    // Save model in a separate thread
-    std::thread([this]() {
-        std::string comment = m_model_comment_to_save_tview->get_buffer()->get_text();
-        std::string model_size = m_model_size_cbox->get_active_id();
-        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
-
-        bool result = convert_efficient_ad_model_to_onnx(m_model_name);
-        if (result) {
-            write_model_readme(m_model_name, m_model_version, model_size, max_epochs, comment, m_auroc_value, m_f1_value);
-
-            auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
-            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
-            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"onnx"/"model.onnx";
-            auto model_readme_path = AppPaths::WIP_Model_Path/"model.readme";
-            auto model_dest_path = AppPaths::Models_Path/m_model_name/m_model_version;
-
-            // Create the model directory if it doesn't exist
-            fs::create_directories(model_dest_path);
-            // Copy the dataset.json to AppPaths::Models_Path
-            fs::copy(dataset_path, model_dest_path/"dataset.json", fs::copy_options::overwrite_existing);
-            // Copy the model files to AppPaths::Models_Path
-            fs::copy(model_ckpt_path, model_dest_path/"model.ckpt", fs::copy_options::overwrite_existing);
-            fs::copy(model_onnx_path, model_dest_path/"model.onnx", fs::copy_options::overwrite_existing);
-            fs::copy(model_readme_path, model_dest_path/"model.readme", fs::copy_options::overwrite_existing);
-        }
-
-        // Once done, update the button in the UI thread
-        Glib::signal_idle().connect_once([this]() {
-            m_save_model_btn->set_sensitive(true);
-        });
-    }).detach(); // Detach the thread to allow it to run independently
-}
-
-bool MainWindow::convert_efficient_ad_model_to_onnx(const std::string& model_name)
-{
-    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
-    std::array<char, 256> buffer_line;
-
-    fs::path script_path = AppPaths::WIP_Path / "convert_model.py";
-    std::string cmd =
-        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
-        "conda activate eagle_nest && "
-        "python \"" + script_path.string() + "\" " + model_name +
-        " 2>&1'";  // <-- This redirects stderr to stdout;
-
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        buffer->insert(buffer->end(), "Failed to start script.\n");
-        return false;
-    }
-
-    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
-        std::string line(buffer_line.data());
-        Glib::signal_idle().connect_once([buffer, line]() {
-            buffer->insert(buffer->end(), line);
-        });
-    }
-
-    int status = pclose(pipe); // Blocks until script finishes
-    int exit_code = 1;
-
-    if (WIFEXITED(status)) {
-        exit_code = WEXITSTATUS(status);
-        if (exit_code != 0) {
-            buffer->insert(buffer->end(), "\nTraining failed with exit code: " + std::to_string(exit_code) + "\n");
-        }
-    } else {
-        buffer->insert(buffer->end(), "\nTraining process did not exit normally.\n");
-    }
-
-    return exit_code == 0; // Return true if the script executed successfully
 }
 
 void MainWindow::on_explorer_toggled()
@@ -2806,4 +1965,1574 @@ void MainWindow::on_remove_test_images_clicked()
 
     // Refresh the test images listbox
     on_test_images_refresh_clicked();
+}
+
+void MainWindow::on_start_train_model_clicked()
+{
+    m_active_model_page = "page_training_wizard";
+    m_content_stack->set_visible_child(m_active_model_page);
+    m_training_stack->set_visible_child("page_select_model");
+    m_current_step = 0;
+    m_previous_btn->set_sensitive(false);
+    m_next_btn->set_sensitive(true);
+    update_step_indicator();
+
+    // Prepare the WIP directory and copy scripts
+    prepare_wip_scripts();
+
+    // Load all existing trained models and populate the model name combo box
+    auto models = get_existing_models();
+    m_existing_models_cbox->remove_all(); // Clear existing items
+    for (const auto& model_name : models)
+    {
+        m_existing_models_cbox->append(model_name);
+    }
+}
+
+void MainWindow::on_model_performance_evaluation_clicked()
+{
+    m_active_model_page = "page_model_performance_evaluation";
+    m_content_stack->set_visible_child(m_active_model_page);
+
+    // Prepare the WIP directory and copy scripts
+    prepare_wip_scripts();
+
+    // Load all existing trained models and populate the model name combo box
+    auto models = get_existing_models();
+    m_model1_existing_models_cbox->remove_all(); // Clear existing items
+    m_model2_existing_models_cbox->remove_all(); // Clear existing items
+    for (const auto& model_name : models)
+    {
+        m_model1_existing_models_cbox->append(model_name);
+        m_model2_existing_models_cbox->append(model_name);
+    }
+}
+
+void MainWindow::prepare_wip_scripts()
+{
+    // Create training WIP directory if it doesn't exist
+    if (!std::filesystem::exists(AppPaths::WIP_Path))
+    {
+        std::filesystem::create_directories(AppPaths::WIP_Path);
+    }
+    else // Clear the directory if it already exists
+    {
+        for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
+        {
+            std::filesystem::remove_all(entry.path());
+        }
+    }
+
+    // Copy all python scripts from the install share directory to the WIP directory
+    auto install_share_dir = AppPaths::Install_Share_Dir;
+    auto wip_dir = AppPaths::WIP_Path;
+    for (const auto &entry : std::filesystem::directory_iterator(install_share_dir))
+    {
+        if (entry.path().extension() == ".py")
+        {
+            std::filesystem::copy(entry.path(), wip_dir / entry.path().filename());
+        }
+    }
+}
+
+std::vector<std::string> MainWindow::get_existing_models()
+{
+    std::vector<std::string> models;
+    auto models_path = AppPaths::Models_Path;
+
+    m_existing_models_cbox->remove_all(); // Clear existing items
+
+    if (!fs::exists(models_path) || !fs::is_directory(models_path))
+        return models;
+
+    for (const auto& entry : fs::directory_iterator(models_path))
+    {
+        if (entry.is_directory())
+        {
+            std::string model_name = entry.path().filename().string();
+            models.push_back(model_name);
+        }
+    }
+
+    return models;
+}
+
+void MainWindow::on_existing_model_selection_changed()
+{
+    std::string selected_model = m_existing_models_cbox->get_active_text();
+    if (selected_model.empty())
+        return;
+
+    // Update the model name field
+    m_model_name = selected_model;
+
+    // Clear the model version combo box
+    m_model_version_cbox->remove_all();
+
+    // Populate the model version combo box with available versions
+    auto model_path = AppPaths::Models_Path / selected_model;
+    if (fs::exists(model_path) && fs::is_directory(model_path))
+    {
+        for (const auto& entry : fs::directory_iterator(model_path))
+        {
+            if (entry.is_directory())
+            {
+                std::string version = entry.path().filename().string();
+                m_model_version_cbox->append(version);
+            }
+        }
+    }
+}
+
+void MainWindow::on_model_version_selection_changed()
+{
+    std::string selected_model = m_existing_models_cbox->get_active_text();
+    std::string selected_version = m_model_version_cbox->get_active_text();
+
+    if (selected_model.empty() || selected_version.empty())
+        return;
+
+    // Increment the model version
+    int version_number = std::stoi(selected_version.substr(1));
+    m_model_version = std::string("v") + std::to_string(version_number + 1);
+
+    // Load the model readme file and populate the comment text view
+    auto model_path = AppPaths::Models_Path / selected_model / selected_version / "model.readme";
+    if (fs::exists(model_path))
+    {
+        std::ifstream ifs(model_path);
+        if (ifs)
+        {
+            json readme_json;
+            ifs >> readme_json;
+            ifs.close();
+
+            // Populate the model comment text view
+            m_model_comment_tview->get_buffer()->set_text(readme_json["comment"]);
+        }
+    }
+    else
+    {
+        std::cerr << "Model readme file not found." << std::endl;
+    }
+}
+
+void MainWindow::on_previous_clicked()
+{
+    if (m_current_step > 0) {
+        --m_current_step;
+        m_training_stack->set_visible_child(m_training_page_names[m_current_step]);
+        m_next_btn->set_sensitive(true);
+    }
+    if (m_current_step == 0) {
+        m_previous_btn->set_sensitive(false);
+    }
+    update_step_indicator();
+    transition_step(false);
+}
+
+void MainWindow::on_next_clicked()
+{
+    if (m_current_step < m_training_page_names.size() - 1) {
+        ++m_current_step;
+        m_training_stack->set_visible_child(m_training_page_names[m_current_step]);
+        m_previous_btn->set_sensitive(true);
+    }
+    if (m_current_step == m_training_page_names.size() - 1) {
+        m_next_btn->set_sensitive(false);
+    }
+    update_step_indicator();
+    transition_step(true);
+}
+
+void MainWindow::on_close_training_wizard_clicked()
+{
+    // Clear the directory if it already exists
+    for (const auto &entry : std::filesystem::directory_iterator(AppPaths::WIP_Path))
+    {
+        std::filesystem::remove_all(entry.path());
+    }
+
+    // Reset the training wizard state
+    m_current_step = 0;
+    m_model_name = "";
+    m_model_version = "v1"; // Reset version to v1
+    m_model_size = "";
+    m_model_name_entry->set_text("");
+    m_existing_models_cbox->remove_all();
+    m_model_version_cbox->remove_all();
+    m_model_comment_tview->get_buffer()->set_text("");
+    for (auto* child : m_wizard_train_images_lbox->get_children())
+    {
+        m_wizard_train_images_lbox->remove(*child);
+    }
+    m_wizard_train_img_pixbuf.reset();
+    m_selected_images_on_wizard_listbox.clear();
+    m_wizard_training_selected_count_lbl->set_text("0");
+    m_wizard_training_included_count_lbl->set_text("0");
+    m_wizard_training_total_count_lbl->set_text("0");
+    m_train_model_tview->get_buffer()->set_text("");
+    m_auroc_value = 0.0;
+    m_f1_value = 0.0;
+    m_f1_score_lbl->set_text("");
+    m_area_under_roc_lbl->set_text("");
+    for (auto* child : m_wizard_test_images_lbox->get_children())
+    {
+        m_wizard_test_images_lbox->remove(*child);
+    }
+    m_wizard_test_img_pixbuf.reset();
+    m_wizard_test_heatmap_pixbuf.reset();
+    m_wizard_anomaly_score_dist_img_widget->clear();
+    m_model_name_to_save_lbl->set_text("");
+    m_model_version_to_save_lbl->set_text("");
+    m_model_size_to_save_lbl->set_text("");
+    m_model_comment_to_save_tview->get_buffer()->set_text("");
+    m_previous_btn->set_sensitive(false);
+    m_next_btn->set_sensitive(true);
+
+    m_active_model_page = "page_model_welcome";
+    m_content_stack->set_visible_child(m_active_model_page);
+}
+
+void MainWindow::update_step_indicator() {
+    for (size_t i = 0; i < m_training_step_labels.size(); ++i) {
+        auto current_step_name = m_training_step_labels[i]->get_text();
+        m_training_step_labels[i]->set_markup(i == m_current_step ? "<b><span foreground='blue'>" + current_step_name + "</span></b>" : current_step_name);
+    }
+}
+
+void MainWindow::transition_step(bool step_forward)
+{
+    if (step_forward) // This function is triggered by the next button
+    {
+        if (m_current_step == 1) // Step 0 (Select Model) to Step 1 (Select Images)
+        {
+            
+        }
+        else if (m_current_step == 2) // Step 1 (Select Images) to Step 2 (Training)
+        {
+        }
+        else if (m_current_step == 3) // Step 2 (Training) to Step 3 (Testing)
+        {
+            // Update the model name and version labels on Testing page
+            m_model_under_test_lbl->set_text(m_model_name);
+            m_model_version_under_test_lbl->set_text(m_model_version);
+        }
+        else if (m_current_step == 4) // Step 3 (Testing) to Step 4 (Save Model)
+        {
+            m_model_name_to_save_lbl->set_text(m_model_name);
+            m_model_version_to_save_lbl->set_text(m_model_version);
+            m_model_size_to_save_lbl->set_text(m_model_size);
+            m_model_comment_to_save_tview->get_buffer()->set_text(m_model_comment_tview->get_buffer()->get_text());
+        }
+    }
+    else // This function is triggered by the previous button
+    {
+        if (m_current_step == 0) // Step 1 to Step 0
+        {
+
+        }
+        else if (m_current_step == 1) // Step 2 to Step 1
+        {
+            
+        }
+        else
+        {
+            
+        }
+    }
+}
+
+void MainWindow::write_model_readme(const std::string& name, const std::string& version, const std::string& size, const int epochs, const std::string& comment, const double auroc_value, const double f1_value)
+{
+    // Get current datetime in ISO 8601 format
+    auto now = std::chrono::system_clock::now();
+    std::time_t time_now = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&time_now), "%Y-%m-%dT%H:%M:%S");
+
+    nlohmann::json readme_json;
+    readme_json["name"] = name;
+    readme_json["version"] = version;
+    readme_json["size"] = size;
+    readme_json["epochs"] = epochs;
+    readme_json["comment"] = comment;
+    readme_json["created_at"] = ss.str();
+    readme_json["auroc"] = auroc_value;
+    readme_json["f1_score"] = f1_value;
+
+    fs::create_directories(AppPaths::WIP_Model_Path);
+    std::ofstream out(AppPaths::WIP_Model_Path / "model.readme");
+    out << std::setw(4) << readme_json << std::endl;
+}
+
+void MainWindow::on_training_wizard_image_refresh_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_training_wizard_image_refresh_btn->set_sensitive(false);
+
+    // Load images in a separate thread
+    std::thread([this]() {
+        std::vector<ImageInfo> images_from_training_set;
+        std::string selected_img_inclusion = m_training_wizard_img_included_cbox->get_active_text();
+        std::string selected_img_category = m_training_wizard_img_category_cbox->get_active_text();
+        int total_training_images_count = 0;
+        int included_training_images_count = 0;
+
+        try
+        {
+            auto dataset_dir = AppPaths::WIP_Dataset_Path;
+            auto dest_json = dataset_dir / "dataset.json";
+
+            // Ensure the dataset directory exists
+            if (!fs::exists(dataset_dir))
+            {
+                fs::create_directories(dataset_dir);
+            }
+
+            // If dest_json does not exist, copy it from the source
+            if (!fs::exists(dest_json))
+            {
+                auto source_json = AppPaths::Dataset_Path / "dataset.json";
+                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
+            }
+
+            // Load existing JSON from destination
+            std::ifstream ifs(dest_json);
+
+            if (!ifs)
+            {
+                std::cerr << "Failed to open dataset.json" << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    std::string img_id = entry["img_id"];
+                    std::string src_img_path = entry["src_img_path"];
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string source_name = entry["source_name"];
+                    std::string source_type = entry["source_type"];
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
+
+                    // Filter based on dataset type
+                    if (dataset_type != "train")
+                        continue;
+                    
+                    total_training_images_count++;
+
+                    if (inclusion == "Included")
+                        included_training_images_count++;
+                    
+                    // Filter based on inclusion status
+                    if (selected_img_inclusion != inclusion)
+                        continue;
+
+                    // Filter based on category
+                    if (selected_img_category != category)
+                        continue;
+
+                    images_from_training_set.emplace_back(ImageInfo {
+                        img_id,
+                        src_img_path,
+                        dest_img_path,
+                        source_name,
+                        source_type,
+                        category,
+                        inclusion,
+                        dataset_type
+                    });
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error while scanning images: " << e.what() << '\n';
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, imgs = std::move(images_from_training_set), included_training_images_count, total_training_images_count]() {
+            populate_wizard_train_images_listbox(imgs);
+            m_toggle_all_on_wizard_btn->set_label("Select All");
+            m_selected_images_on_wizard_listbox.clear();
+            
+            // Update the count labels
+            m_wizard_training_selected_count_lbl->set_text("0");
+            m_wizard_training_included_count_lbl->set_text(std::to_string(included_training_images_count));
+            m_wizard_training_total_count_lbl->set_text(std::to_string(total_training_images_count));
+            
+            // Enable the refresh button again
+            m_training_wizard_image_refresh_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::populate_wizard_train_images_listbox(const std::vector<ImageInfo>& images)
+{
+    // clear previous rows
+    for (auto* child : m_wizard_train_images_lbox->get_children())
+    {
+        m_wizard_train_images_lbox->remove(*child);
+    }
+
+    // add one row per image
+    for (const auto& info : images)
+    {
+        auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: checkbox + filename label + "Info" button
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        // Checkbox
+        auto checkbox = Gtk::make_managed<Gtk::CheckButton>();
+        checkbox->set_halign(Gtk::Align::ALIGN_CENTER);
+        hbox->pack_start(*checkbox, Gtk::PACK_SHRINK);
+        checkbox->signal_toggled().connect([this, checkbox, info]() {
+            bool is_checked = checkbox->get_active();
+            if (is_checked)
+                m_selected_images_on_wizard_listbox[checkbox] = info.img_id;
+            else
+                m_selected_images_on_wizard_listbox.erase(checkbox);
+
+            // Update the count label
+            m_wizard_training_selected_count_lbl->set_text(std::to_string(m_selected_images_on_wizard_listbox.size()));
+        });
+
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
+
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
+
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
+
+        // Store the path as custom data
+        row->set_data("image_path", new fs::path(info.dest_img_path));
+
+        // Add the row to the listbox
+        m_wizard_train_images_lbox->append(*row);
+    }
+    m_wizard_train_images_lbox->show_all_children();
+}
+
+void MainWindow::update_selected_images_inclusion(const std::string& inclusion)
+{
+    // Load existing JSON
+    auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
+    std::ifstream ifs(dataset_json);
+    if (!ifs)
+    {
+        std::cerr << "Failed to open dataset.json" << std::endl;
+        return;
+    }
+
+    json images_json;
+    ifs >> images_json;
+    ifs.close();
+
+    // Update the inclusion status
+    for (const auto& [checkbox, img_id] : m_selected_images_on_wizard_listbox)
+    {
+        // Check if the image is already in the dataset
+        auto it = std::find_if(images_json.begin(), images_json.end(),
+            [img_id](const json& entry) {
+                return entry["img_id"] == img_id;
+            });
+        if (it != images_json.end())
+        {
+            // Image found, update its inclusion status
+            (*it)["inclusion"] = inclusion;
+        }
+        else
+        {
+            // Image doesn't exist, add it to the dataset
+            std::cerr << "Image ID not found in dataset.json: " << img_id << std::endl;
+        }
+    }
+
+    // Save the updated JSON
+    std::ofstream ofs(dataset_json);
+    ofs << std::setw(4) << images_json << std::endl;
+}
+
+void MainWindow::on_train_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_train_model_btn->set_sensitive(false);
+
+    // Train model in a separate thread
+    std::thread([this]() {
+        if (m_model_name.empty())
+        {
+            std::cerr << "Model name cannot be empty." << std::endl;
+            return;
+        }
+
+        prepare_wip_dataset("train");
+        m_model_size = m_model_size_cbox->get_active_id();
+        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
+        std::string model_ckpt = "";
+        if (m_select_model_rbtn->get_active())
+        {
+            std::string current_version = m_model_version_cbox->get_active_text();
+            model_ckpt = AppPaths::Models_Path/m_model_name/current_version/"model.ckpt";
+        }
+
+        run_train_efficient_ad_model_script(m_model_name, m_model_size, max_epochs, model_ckpt);
+        
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_train_model_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::prepare_wip_dataset(std::string dataset_type)
+{
+    try
+    {
+        auto dataset_path = AppPaths::WIP_Dataset_Path / dataset_type;
+        auto normal_dataset_path = dataset_path / "normal";
+        auto abnormal_dataset_path = dataset_path / "abnormal";
+
+        if (fs::exists(normal_dataset_path)) {
+            // Remove all contents inside the dataset/normal directory
+            fs::remove_all(normal_dataset_path);
+        }
+
+        if (fs::exists(abnormal_dataset_path)) {
+            // Remove all contents inside the dataset/abnormal directory
+            fs::remove_all(abnormal_dataset_path);
+        }
+
+        // Recreate the dataset directory and its subdirectories
+        fs::create_directories(dataset_path / "normal");
+        fs::create_directories(dataset_path / "abnormal");
+
+        // Load existing JSON
+        // Copy the image from training set to the WIP directory
+        auto dataset_json = AppPaths::WIP_Dataset_Path / "dataset.json";
+        if (!fs::exists(dataset_json))
+        {
+            std::cerr << dataset_json << " does not exist" << std::endl;
+        }
+        else
+        {
+            std::ifstream ifs(dataset_json);
+                
+            if (!ifs)
+            {
+                std::cerr << "Failed to open " << dataset_json << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string img_name = fs::path(dest_img_path).filename();
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+                    std::string entry_dataset_type = entry["dataset_type"];
+
+                    // Filter based on inclusion status
+                    if (inclusion != "Included")
+                        continue;
+
+                    // Filter based on dataset type
+                    if (entry_dataset_type != dataset_type)
+                        continue;
+
+                    // Copy the image to the appropriate directory
+                    auto dataset_category_path = dataset_path / category;
+                    fs::copy(dest_img_path, dataset_category_path / img_name, fs::copy_options::overwrite_existing);
+                }
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error while preparing training images: " << e.what() << '\n';
+    }
+}
+
+bool MainWindow::run_train_efficient_ad_model_script(const std::string& model_name, const std::string& model_size, int max_epochs, const std::string& model_ckpt)
+{
+    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
+    std::array<char, 256> buffer_line;
+
+    fs::path script_path = AppPaths::WIP_Path / "train_model.py";
+    std::string cmd =
+        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
+        "conda activate eagle_nest && "
+        "python \"" + script_path.string() + "\" " + model_name + " " + model_size + " " + std::to_string(max_epochs) + " " + model_ckpt +
+        " 2>&1'";  // <-- This redirects stderr to stdout;
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        buffer->insert(buffer->end(), "Failed to start script.\n");
+        return false;
+    }
+
+    // char buffer_line[256];
+    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
+        std::string line(buffer_line.data());
+        Glib::signal_idle().connect_once([buffer, line]() {
+            buffer->insert(buffer->end(), line);
+        });
+    }
+
+    int status = pclose(pipe); // Blocks until script finishes
+    int exit_code = 1;
+
+    if (WIFEXITED(status)) {
+        exit_code = WEXITSTATUS(status);
+        if (exit_code != 0) {
+            buffer->insert(buffer->end(), "\nTraining failed with exit code: " + std::to_string(exit_code) + "\n");
+        }
+    } else {
+        buffer->insert(buffer->end(), "\nTraining process did not exit normally.\n");
+    }
+
+    return exit_code == 0; // Return true if the script executed successfully
+}
+
+void MainWindow::on_test_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_test_model_btn->set_sensitive(false);
+
+    // Test model in a separate thread
+    std::thread([this]() {
+        if (m_model_name.empty())
+        {
+            std::cerr << "Model name cannot be empty." << std::endl;
+            return;
+        }
+
+        std::string model_ckpt = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+        bool result = run_test_efficient_ad_model_script(m_model_name, m_model_version, model_ckpt, m_auroc_value, m_f1_value);
+
+        if (result) {
+            auto dest_json = AppPaths::WIP_Testset_Path / m_model_name / m_model_version / "pred_results.json";
+
+            load_prediction_results(dest_json.string(), m_image_to_heatmap_map);
+        }
+
+        std::vector<ImagePrediction> images_from_testing_set;
+        if (result) {
+            auto dataset_dir = AppPaths::WIP_Dataset_Path;
+            auto dest_json = dataset_dir / "dataset.json";
+
+            // Ensure the dataset directory exists
+            if (!fs::exists(dataset_dir))
+            {
+                fs::create_directories(dataset_dir);
+            }
+
+            // If dest_json does not exist, copy it from the source
+            if (!fs::exists(dest_json))
+            {
+                auto source_json = AppPaths::Dataset_Path / "dataset.json";
+                fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
+            }
+
+            // Load existing JSON from destination
+            std::ifstream ifs(dest_json);
+
+            if (!ifs)
+            {
+                std::cerr << "Failed to open dataset.json" << std::endl;
+            }
+            else
+            {
+                json images_json;
+                ifs >> images_json;
+                ifs.close();
+                
+                for (const auto& entry : images_json)
+                {
+                    std::string img_id = entry["img_id"];
+                    std::string src_img_path = entry["src_img_path"];
+                    std::string dest_img_path = entry["dest_img_path"];
+                    std::string source_name = entry["source_name"];
+                    std::string source_type = entry["source_type"];
+                    std::string category = entry["category"];
+                    std::string inclusion = entry["inclusion"];
+                    std::string dataset_type = entry["dataset_type"];
+                    const auto& heatmap_info = m_image_to_heatmap_map[dest_img_path];
+                    std::string heatmap_path = heatmap_info.first;
+                    float anomaly_score = heatmap_info.second;
+
+                    // Filter based on dataset type
+                    if (dataset_type != "test")
+                        continue;
+
+                    // Filter based on inclusion
+                    if (inclusion != "Included")
+                        continue;
+
+                    images_from_testing_set.emplace_back(ImagePrediction {
+                        img_id,
+                        src_img_path,
+                        dest_img_path,
+                        source_name,
+                        source_type,
+                        category,
+                        inclusion,
+                        dataset_type,
+                        heatmap_path,
+                        anomaly_score
+                    });
+                }
+            }
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, result, imgs = std::move(images_from_testing_set)]() {
+            m_test_model_btn->set_sensitive(true);
+            if (result)
+            {
+                m_f1_score_lbl->set_text(std::to_string(m_f1_value));
+                m_area_under_roc_lbl->set_text(std::to_string(m_auroc_value));
+                populate_testing_images_listbox(*m_wizard_test_images_lbox, imgs);
+                fs::path score_distr_path = AppPaths::WIP_Testset_Path / m_model_name / m_model_version / "score_distribution.png";
+                auto pixbuf = Gdk::Pixbuf::create_from_file(score_distr_path.string());
+                if (!pixbuf) {
+                    std::cerr << "Failed to load score distribution image." << std::endl;
+                } else {
+                    m_wizard_anomaly_score_dist_img_widget->set(pixbuf);
+                }
+            }
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+bool MainWindow::run_test_efficient_ad_model_script(const std::string& model_name, const std::string& model_version, const std::string& model_ckpt, double& out_auroc_value, double& out_f1_value)
+{
+    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
+    std::array<char, 256> buffer_line;
+
+    fs::path script_path = AppPaths::WIP_Path / "test_model.py";
+    std::string cmd =
+        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
+        "conda activate eagle_nest && "
+        "python \"" + script_path.string() + "\" " + model_name + " " + model_version + " " + model_ckpt +
+        " 2>&1'";  // <-- This redirects stderr to stdout;
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        buffer->insert(buffer->end(), "Failed to start script.\n");
+        return false;
+    }
+
+    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
+        std::string line(buffer_line.data());
+        std::cout << line << std::endl; // Print to console for debugging
+
+        // Extract AUROC and F1 Score values using regex
+        std::smatch match;
+        if (std::regex_search(line, match, std::regex("AUROC:\\s*([0-9.]+)"))) {
+            out_auroc_value = std::stod(match[1].str());  // Convert to double
+            out_auroc_value = std::round(out_auroc_value * 1000.0) / 1000.0; // Round to 3 decimal places
+        } else if (std::regex_search(line, match, std::regex("F1 Score:\\s*([0-9.]+)"))) {
+            out_f1_value = std::stod(match[1].str());     // Convert to double
+            out_f1_value = std::round(out_f1_value * 1000.0) / 1000.0; // Round to 3 decimal places
+        }
+
+        Glib::signal_idle().connect_once([buffer, line]() {
+            buffer->insert(buffer->end(), line);
+        });
+    }
+
+    int status = pclose(pipe); // Blocks until script finishes
+    int exit_code = 1;
+
+    if (WIFEXITED(status)) {
+        exit_code = WEXITSTATUS(status);
+        if (exit_code != 0) {
+            buffer->insert(buffer->end(), "\nTesting failed with exit code: " + std::to_string(exit_code) + "\n");
+        }
+    } else {
+        buffer->insert(buffer->end(), "\nTesting process did not exit normally.\n");
+    }
+
+    return exit_code == 0; // Return true if the script executed successfully
+}
+
+void MainWindow::populate_testing_images_listbox(Gtk::ListBox& listbox, const std::vector<ImagePrediction>& images, const bool show_anomaly_score)
+{
+    // clear previous rows
+    for (auto* child : listbox.get_children())
+    {
+        listbox.remove(*child);
+    }
+
+    // add one row per image
+    for (const auto& info : images)
+    {
+        auto filename = info.src_img_path.filename().string();
+
+        // Outer vertical box for header and details
+        auto vbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+
+        // Top row: filename label + "Info" button
+        auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 6);
+
+        auto lbl = Gtk::make_managed<Gtk::Label>(filename);
+        lbl->set_xalign(0);
+        lbl->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        lbl->set_tooltip_text(filename);
+        lbl->set_max_width_chars(40);
+        lbl->set_single_line_mode(true);
+
+        hbox->pack_start(*lbl, Gtk::PACK_EXPAND_WIDGET);
+
+        auto toggle_btn = Gtk::make_managed<ExpandCollapseButton>();
+        hbox->pack_start(*toggle_btn, Gtk::PACK_SHRINK);
+
+        // Detail content
+        auto details_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_VERTICAL, 3);
+        auto dataset_type_label = Gtk::make_managed<Gtk::Label>("Dataset Type" + std::string(": ") + info.dataset_type);
+        dataset_type_label->set_xalign(0);
+        auto category_label = Gtk::make_managed<Gtk::Label>("Category" + std::string(": ") + info.category);
+        category_label->set_xalign(0);
+        auto source_name_label = Gtk::make_managed<Gtk::Label>("Data Source Name" + std::string(": ") + info.source_name);
+        source_name_label->set_xalign(0);
+        auto source_type_label = Gtk::make_managed<Gtk::Label>("Data Source Type" + std::string(": ") + info.source_type);
+        source_type_label->set_xalign(0);
+        auto img_path_label = Gtk::make_managed<Gtk::Label>("Image Path" + std::string(": ") + info.dest_img_path.string());
+        img_path_label->set_ellipsize(Pango::ELLIPSIZE_MIDDLE);
+        img_path_label->set_max_width_chars(40); // Limit display width
+        img_path_label->set_tooltip_text(info.dest_img_path.string());
+        img_path_label->set_xalign(0); // Align left
+        if (show_anomaly_score)
+        {
+            auto anomaly_score_label = Gtk::make_managed<Gtk::Label>("Anomaly Score" + std::string(": ") + std::to_string(info.anomaly_score));
+            anomaly_score_label->set_xalign(0);
+            details_box->pack_start(*anomaly_score_label, Gtk::PACK_SHRINK);
+        }
+        details_box->pack_start(*dataset_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*category_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_name_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*source_type_label, Gtk::PACK_SHRINK);
+        details_box->pack_start(*img_path_label, Gtk::PACK_SHRINK);
+        details_box->set_margin_start(5);
+        details_box->set_margin_end(5);
+        details_box->set_margin_top(5);
+        details_box->set_margin_bottom(5);
+
+        // Wrap detail box in a Revealer
+        auto revealer = Gtk::make_managed<Gtk::Revealer>();
+        revealer->set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+        revealer->set_transition_duration(200);
+        revealer->add(*details_box);
+        revealer->set_reveal_child(false);  // initially hidden
+
+        // Toggle the Revealer when the button is clicked
+        toggle_btn->signal_toggled.connect([revealer](bool expanded) {
+            revealer->set_reveal_child(expanded);
+        });
+
+        // Pack into vertical container
+        vbox->pack_start(*hbox, Gtk::PACK_SHRINK);
+        vbox->pack_start(*revealer, Gtk::PACK_SHRINK);
+
+        // Create row and add to listbox
+        auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+        row->add(*vbox);
+
+        // Store the path as custom data
+        row->set_data("image_path", new fs::path(info.dest_img_path));
+
+        // Add the row to the listbox
+        listbox.append(*row);
+    }
+    listbox.show_all_children();
+
+    // Select the first row if no row is selected
+    if (!listbox.get_selected_row()) {
+        const auto& children = listbox.get_children();
+        if (!children.empty()) {
+            if (auto* first = dynamic_cast<Gtk::ListBoxRow*>(children.front())) {
+                listbox.select_row(*first);
+                activate_eval_testing_images_row(first);
+            }
+        }
+    }
+}
+
+void MainWindow::load_prediction_results(
+    const std::string& json_path,
+    std::unordered_map<std::string, std::pair<std::string, float>>& image_to_heatmap_map)
+{
+    image_to_heatmap_map.clear();
+    std::ifstream ifs(json_path);
+    if (!ifs) {
+        std::cerr << "Failed to open pred_results.json at " << json_path << std::endl;
+        return;
+    }
+
+    nlohmann::json results;
+    ifs >> results;
+
+    for (const auto& entry : results) {
+        std::string img_path = entry["input_image"];
+        std::string heatmap_path = entry["anomaly_heatmap"];
+        float anomaly_score = entry["anomaly_score"];
+        image_to_heatmap_map[img_path] = {heatmap_path, anomaly_score};
+    }
+}
+
+void MainWindow::on_save_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_save_model_btn->set_sensitive(false);
+
+    // Save model in a separate thread
+    std::thread([this]() {
+        std::string comment = m_model_comment_to_save_tview->get_buffer()->get_text();
+        std::string model_size = m_model_size_cbox->get_active_id();
+        int max_epochs = m_max_epochs_sbtn->get_value_as_int();
+
+        bool result = convert_efficient_ad_model_to_onnx(m_model_name);
+        if (result) {
+            write_model_readme(m_model_name, m_model_version, model_size, max_epochs, comment, m_auroc_value, m_f1_value);
+
+            auto dataset_path = AppPaths::WIP_Dataset_Path/"dataset.json";
+            auto model_ckpt_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"lightning"/"model.ckpt";
+            auto model_onnx_path = AppPaths::WIP_Model_Path/"EfficientAd"/m_model_name/"latest"/"weights"/"onnx"/"model.onnx";
+            auto model_readme_path = AppPaths::WIP_Model_Path/"model.readme";
+            auto model_dest_path = AppPaths::Models_Path/m_model_name/m_model_version;
+
+            // Create the model directory if it doesn't exist
+            fs::create_directories(model_dest_path);
+            // Copy the dataset.json to AppPaths::Models_Path
+            fs::copy(dataset_path, model_dest_path/"dataset.json", fs::copy_options::overwrite_existing);
+            // Copy the model files to AppPaths::Models_Path
+            fs::copy(model_ckpt_path, model_dest_path/"model.ckpt", fs::copy_options::overwrite_existing);
+            fs::copy(model_onnx_path, model_dest_path/"model.onnx", fs::copy_options::overwrite_existing);
+            fs::copy(model_readme_path, model_dest_path/"model.readme", fs::copy_options::overwrite_existing);
+        }
+
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this]() {
+            m_save_model_btn->set_sensitive(true);
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+bool MainWindow::convert_efficient_ad_model_to_onnx(const std::string& model_name)
+{
+    Glib::RefPtr<Gtk::TextBuffer> buffer = m_train_model_tview->get_buffer();
+    std::array<char, 256> buffer_line;
+
+    fs::path script_path = AppPaths::WIP_Path / "convert_model.py";
+    std::string cmd =
+        "bash -c 'source ~/anaconda3/etc/profile.d/conda.sh && "
+        "conda activate eagle_nest && "
+        "python \"" + script_path.string() + "\" " + model_name +
+        " 2>&1'";  // <-- This redirects stderr to stdout;
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        buffer->insert(buffer->end(), "Failed to start script.\n");
+        return false;
+    }
+
+    while (fgets(buffer_line.data(), buffer_line.size(), pipe) != nullptr) {
+        std::string line(buffer_line.data());
+        Glib::signal_idle().connect_once([buffer, line]() {
+            buffer->insert(buffer->end(), line);
+        });
+    }
+
+    int status = pclose(pipe); // Blocks until script finishes
+    int exit_code = 1;
+
+    if (WIFEXITED(status)) {
+        exit_code = WEXITSTATUS(status);
+        if (exit_code != 0) {
+            buffer->insert(buffer->end(), "\nTraining failed with exit code: " + std::to_string(exit_code) + "\n");
+        }
+    } else {
+        buffer->insert(buffer->end(), "\nTraining process did not exit normally.\n");
+    }
+
+    return exit_code == 0; // Return true if the script executed successfully
+}
+
+void MainWindow::on_model1_existing_models_selection_changed()
+{
+    std::string selected_model = m_model1_existing_models_cbox->get_active_text();
+    if (selected_model.empty())
+        return;
+
+    // Clear the model version combo box
+    m_model1_version_cbox->remove_all();
+
+    // Populate the model version combo box with available versions
+    auto model_path = AppPaths::Models_Path / selected_model;
+    if (fs::exists(model_path) && fs::is_directory(model_path))
+    {
+        for (const auto& entry : fs::directory_iterator(model_path))
+        {
+            if (entry.is_directory())
+            {
+                std::string version = entry.path().filename().string();
+                m_model1_version_cbox->append(version);
+            }
+        }
+    }
+}
+
+void MainWindow::on_model1_version_selection_changed()
+{
+    std::string selected_model = m_model1_existing_models_cbox->get_active_text();
+    std::string selected_version = m_model1_version_cbox->get_active_text();
+
+    if (selected_model.empty() || selected_version.empty())
+        return;
+
+    // Load the model readme file and populate the comment text view
+    auto model_path = AppPaths::Models_Path / selected_model / selected_version / "model.readme";
+    if (fs::exists(model_path))
+    {
+        std::ifstream ifs(model_path);
+        if (ifs)
+        {
+            json readme_json;
+            ifs >> readme_json;
+            ifs.close();
+
+            // Populate the model comment text view
+            m_model1_comment_tview->get_buffer()->set_text(readme_json["comment"]);
+        }
+    }
+    else
+    {
+        std::cerr << "Model readme file not found." << std::endl;
+    }
+}
+
+void MainWindow::on_model1_anomaly_score_dist_zoom_in_clicked()
+{
+    if (!m_model1_anomaly_score_dist_pixbuf)
+    {
+        std::cerr << "No image loaded for zooming." << std::endl;
+        return;
+    }
+
+    // Zoom in
+    const double zoom_step = 0.1;
+    m_model1_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step);
+
+    // Limit zoom factor
+    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+
+    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
+    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
+
+    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
+        new_width, new_height, Gdk::INTERP_BILINEAR);
+
+    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+}
+
+void MainWindow::on_model1_anomaly_score_dist_zoom_out_clicked()
+{
+    if (!m_model1_anomaly_score_dist_pixbuf)
+    {
+        std::cerr << "No image loaded for zooming." << std::endl;
+        return;
+    }
+    
+    // Zoom out
+    const double zoom_step = 0.1;
+    m_model1_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step);
+
+    // Limit zoom factor
+    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+
+    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
+    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
+
+    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
+        new_width, new_height, Gdk::INTERP_BILINEAR);
+
+    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+}
+
+bool MainWindow::on_model1_anomaly_score_dist_image_scroll(GdkEventScroll* event)
+{
+    const double zoom_step = 0.1;
+
+    if (event->direction == GDK_SCROLL_UP || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y < 0))
+        m_model1_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step); // Zoom in
+    else if (event->direction == GDK_SCROLL_DOWN || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y > 0))
+        m_model1_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step); // Zoom out
+    else
+        return false; // Not handled
+
+    // Limit zoom factor
+    m_model1_anomaly_score_dist_zoom_scale = std::clamp(m_model1_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+
+    int new_width = m_model1_anomaly_score_dist_pixbuf->get_width() * m_model1_anomaly_score_dist_zoom_scale;
+    int new_height = m_model1_anomaly_score_dist_pixbuf->get_height() * m_model1_anomaly_score_dist_zoom_scale;
+
+    auto zoomed_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(
+        new_width, new_height, Gdk::INTERP_BILINEAR);
+
+    m_model1_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+
+    return true; // Event handled
+}
+
+void MainWindow::on_model2_existing_models_selection_changed()
+{
+    std::string selected_model = m_model2_existing_models_cbox->get_active_text();
+    if (selected_model.empty())
+        return;
+
+    // Clear the model version combo box
+    m_model2_version_cbox->remove_all();
+
+    // Populate the model version combo box with available versions
+    auto model_path = AppPaths::Models_Path / selected_model;
+    if (fs::exists(model_path) && fs::is_directory(model_path))
+    {
+        for (const auto& entry : fs::directory_iterator(model_path))
+        {
+            if (entry.is_directory())
+            {
+                std::string version = entry.path().filename().string();
+                m_model2_version_cbox->append(version);
+            }
+        }
+    }
+}
+
+void MainWindow::on_model2_version_selection_changed()
+{
+    std::string selected_model = m_model2_existing_models_cbox->get_active_text();
+    std::string selected_version = m_model2_version_cbox->get_active_text();
+
+    if (selected_model.empty() || selected_version.empty())
+        return;
+
+    // Load the model readme file and populate the comment text view
+    auto model_path = AppPaths::Models_Path / selected_model / selected_version / "model.readme";
+    if (fs::exists(model_path))
+    {
+        std::ifstream ifs(model_path);
+        if (ifs)
+        {
+            json readme_json;
+            ifs >> readme_json;
+            ifs.close();
+
+            // Populate the model comment text view
+            m_model2_comment_tview->get_buffer()->set_text(readme_json["comment"]);
+        }
+    }
+    else
+    {
+        std::cerr << "Model readme file not found." << std::endl;
+    }
+}
+
+bool MainWindow::on_model2_anomaly_score_dist_image_scroll(GdkEventScroll* event)
+{
+    const double zoom_step = 0.1;
+
+    if (event->direction == GDK_SCROLL_UP || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y < 0))
+        m_model2_anomaly_score_dist_zoom_scale *= (1.0 + zoom_step); // Zoom in
+    else if (event->direction == GDK_SCROLL_DOWN || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y > 0))
+        m_model2_anomaly_score_dist_zoom_scale /= (1.0 + zoom_step); // Zoom out
+    else
+        return false; // Not handled
+
+    // Limit zoom factor
+    m_model2_anomaly_score_dist_zoom_scale = std::clamp(m_model2_anomaly_score_dist_zoom_scale, 0.1, 10.0);
+
+    int new_width = m_model2_anomaly_score_dist_pixbuf->get_width() * m_model2_anomaly_score_dist_zoom_scale;
+    int new_height = m_model2_anomaly_score_dist_pixbuf->get_height() * m_model2_anomaly_score_dist_zoom_scale;
+
+    auto zoomed_pixbuf = m_model2_anomaly_score_dist_pixbuf->scale_simple(
+        new_width, new_height, Gdk::INTERP_BILINEAR);
+
+    m_model2_anomaly_score_dist_img_widget->set(zoomed_pixbuf);
+
+    return true; // Event handled
+}
+
+void MainWindow::on_eval_model_clicked()
+{
+    // Disable the button to prevent multiple clicks
+    m_eval_model_btn->set_sensitive(false);
+
+    // Evaluate model in a separate thread
+    std::thread([this]() {
+        // Ensure the dataset directory exists
+        auto dataset_dir = AppPaths::WIP_Dataset_Path;
+        if (!fs::exists(dataset_dir))
+        {
+            fs::create_directories(dataset_dir);
+        }
+
+        // If dest_json does not exist, copy it from the source
+        auto dest_json = dataset_dir / "dataset.json";
+        if (!fs::exists(dest_json))
+        {
+            auto source_json = AppPaths::Dataset_Path / "dataset.json";
+            fs::copy(source_json, dest_json, fs::copy_options::overwrite_existing);
+        }
+
+        bool result1 = false;
+        bool result2 = false;
+        std::string model1_name = m_model1_existing_models_cbox->get_active_text();
+        std::string model1_version = m_model1_version_cbox->get_active_text();
+        std::string model2_name = m_model2_existing_models_cbox->get_active_text();
+        std::string model2_version = m_model2_version_cbox->get_active_text();
+
+        if (!model1_name.empty() && !model1_version.empty())
+        {
+            std::string model1_ckpt = AppPaths::Models_Path / model1_name / model1_version / "model.ckpt";
+            result1 = run_test_efficient_ad_model_script(model1_name, model1_version, model1_ckpt, m_model1_auroc_value, m_model1_f1_value);    
+        }
+        
+        if (!model2_name.empty() && !model2_version.empty())
+        {
+            std::string model2_ckpt = AppPaths::Models_Path / model2_name / model2_version / "model.ckpt";
+            result2 = run_test_efficient_ad_model_script(model2_name, model2_version, model2_ckpt, m_model2_auroc_value, m_model2_f1_value);    
+        }
+
+        if (!result1 && !result2)
+        {
+            std::cerr << "Both models failed to evaluate." << std::endl;
+            return;
+        }
+
+        // Load images from the dataset.json file
+        std::ifstream ifs(dest_json);
+        json images_json;
+
+        if (!ifs)
+        {
+            std::cerr << "Failed to open dataset.json" << std::endl;
+            return;
+        }
+        else
+        {
+            ifs >> images_json;
+            ifs.close();
+        }
+
+        // Load prediction results for both models
+        std::vector<ImagePrediction> model1_images_from_testing_set;
+        std::vector<ImagePrediction> model2_images_from_testing_set;
+        
+        if (result1) {
+            auto dest_json = AppPaths::WIP_Testset_Path / model1_name / model1_version / "pred_results.json";
+            load_prediction_results(dest_json.string(), m_model1_image_to_heatmap_map);
+        }
+
+        if (result2) {
+            auto dest_json = AppPaths::WIP_Testset_Path / model2_name / model2_version / "pred_results.json";
+            load_prediction_results(dest_json.string(), m_model2_image_to_heatmap_map);
+        }
+
+        for (const auto& entry : images_json)
+        {
+            std::string img_id = entry["img_id"];
+            std::string src_img_path = entry["src_img_path"];
+            std::string dest_img_path = entry["dest_img_path"];
+            std::string source_name = entry["source_name"];
+            std::string source_type = entry["source_type"];
+            std::string category = entry["category"];
+            std::string inclusion = entry["inclusion"];
+            std::string dataset_type = entry["dataset_type"];
+
+            // Filter based on dataset type
+            if (dataset_type != "test")
+                continue;
+
+            // Filter based on inclusion
+            if (inclusion != "Included")
+                continue;
+
+            if (result1)
+            {
+                const auto& model1_heatmap_info = m_model1_image_to_heatmap_map[dest_img_path];
+                std::string model1_heatmap_path = model1_heatmap_info.first;
+                float model1_anomaly_score = model1_heatmap_info.second;
+                model1_images_from_testing_set.emplace_back(ImagePrediction {
+                    img_id,
+                    src_img_path,
+                    dest_img_path,
+                    source_name,
+                    source_type,
+                    category,
+                    inclusion,
+                    dataset_type,
+                    model1_heatmap_path,
+                    model1_anomaly_score
+                });
+            }
+
+            if (result2)
+            {
+                const auto& model2_heatmap_info = m_model2_image_to_heatmap_map[dest_img_path];
+                std::string model2_heatmap_path = model2_heatmap_info.first;
+                float model2_anomaly_score = model2_heatmap_info.second;
+                model2_images_from_testing_set.emplace_back(ImagePrediction {
+                    img_id,
+                    src_img_path,
+                    dest_img_path,
+                    source_name,
+                    source_type,
+                    category,
+                    inclusion,
+                    dataset_type,
+                    model2_heatmap_path,
+                    model2_anomaly_score
+                });
+            }
+        }
+        
+        // Once done, update the button in the UI thread
+        Glib::signal_idle().connect_once([this, result1, result2, model1_imgs = std::move(model1_images_from_testing_set), model2_imgs = std::move(model2_images_from_testing_set)]() {
+            m_eval_model_btn->set_sensitive(true);
+            if (result1)
+            {
+                m_model1_f1_score_lbl->set_text(std::to_string(m_model1_f1_value));
+                m_model1_area_under_roc_lbl->set_text(std::to_string(m_model1_auroc_value));
+                std::string model1_name = m_model1_existing_models_cbox->get_active_text();
+                std::string model1_version = m_model1_version_cbox->get_active_text();        
+                fs::path score_dist_path = AppPaths::WIP_Testset_Path / model1_name / model1_version / "score_distribution.png";
+                m_model1_anomaly_score_dist_pixbuf = Gdk::Pixbuf::create_from_file(score_dist_path.string());
+                if (!m_model1_anomaly_score_dist_pixbuf) {
+                    std::cerr << "Failed to load score distribution image." << std::endl;
+                } else {
+                    //
+                    // Scale the image to fit the widget
+                    //
+                    
+                    // Get original size of the pixbuf
+                    int img_width = m_model1_anomaly_score_dist_pixbuf->get_width();
+                    int img_height = m_model1_anomaly_score_dist_pixbuf->get_height();
+
+                    // Get desired size from the Gtk::Image widget
+                    int widget_width = m_model1_anomaly_score_dist_img_widget->get_allocated_width();
+                    int widget_height = m_model1_anomaly_score_dist_img_widget->get_allocated_height();
+
+                    // Fall back to original size if widget size is not ready
+                    if (widget_width <= 1 || widget_height <= 1) {
+                        widget_width = img_width;
+                        widget_height = img_height;
+                    }
+                
+                    // Compute scale factor to fit within widget
+                    double scale = std::min(
+                        (double)widget_width / img_width,
+                        (double)widget_height / img_height
+                    );
+                
+                    int scaled_width = static_cast<int>(img_width * scale);
+                    int scaled_height = static_cast<int>(img_height * scale);
+
+                    // Scale the image
+                    auto scaled_pixbuf = m_model1_anomaly_score_dist_pixbuf->scale_simple(scaled_width, scaled_height, Gdk::INTERP_BILINEAR);
+
+                    // Set it to the widget
+                    m_model1_anomaly_score_dist_img_widget->set(scaled_pixbuf);                
+                }
+            }
+            
+            if (result2)
+            {
+                m_model2_f1_score_lbl->set_text(std::to_string(m_model2_f1_value));
+                m_model2_area_under_roc_lbl->set_text(std::to_string(m_model2_auroc_value));
+                std::string model2_name = m_model2_existing_models_cbox->get_active_text();
+                std::string model2_version = m_model2_version_cbox->get_active_text();        
+                fs::path score_dist_path = AppPaths::WIP_Testset_Path / model2_name / model2_version / "score_distribution.png";
+                m_model2_anomaly_score_dist_pixbuf = Gdk::Pixbuf::create_from_file(score_dist_path.string());
+                if (!m_model2_anomaly_score_dist_pixbuf) {
+                    std::cerr << "Failed to load score distribution image." << std::endl;
+                } else {
+                    //
+                    // Scale the image to fit the widget
+                    //
+
+                    // Get original size of the pixbuf
+                    int img_width = m_model2_anomaly_score_dist_pixbuf->get_width();
+                    int img_height = m_model2_anomaly_score_dist_pixbuf->get_height();
+
+                    // Get desired size from the Gtk::Image widget
+                    int widget_width = m_model2_anomaly_score_dist_img_widget->get_allocated_width();
+                    int widget_height = m_model2_anomaly_score_dist_img_widget->get_allocated_height();
+
+                    // Fall back to original size if widget size is not ready
+                    if (widget_width <= 1 || widget_height <= 1) {
+                        widget_width = img_width;
+                        widget_height = img_height;
+                    }
+                
+                    // Compute scale factor to fit within widget
+                    double scale = std::min(
+                        (double)widget_width / img_width,
+                        (double)widget_height / img_height
+                    );
+                
+                    int scaled_width = static_cast<int>(img_width * scale);
+                    int scaled_height = static_cast<int>(img_height * scale);
+
+                    // Scale the image
+                    auto scaled_pixbuf = m_model2_anomaly_score_dist_pixbuf->scale_simple(scaled_width, scaled_height, Gdk::INTERP_BILINEAR);
+
+                    m_model2_anomaly_score_dist_img_widget->set(scaled_pixbuf);
+                }
+            }
+
+            if (result1 && !model1_imgs.empty())
+            {
+                populate_testing_images_listbox(*m_eval_test_images_lbox, model1_imgs, false);
+            }
+            else if (result2 && !model2_imgs.empty())
+            {
+                populate_testing_images_listbox(*m_eval_test_images_lbox, model2_imgs, false);
+            }
+            else
+            {
+                std::cerr << "No images found for evaluation." << std::endl;
+            }
+        });
+    }).detach(); // Detach the thread to allow it to run independently
+}
+
+void MainWindow::activate_eval_testing_images_row(Gtk::ListBoxRow* row)
+{
+    if (!row) return;
+
+    auto path_ptr = static_cast<fs::path*>(row->get_data("image_path"));
+    if (!path_ptr) return;
+
+    const fs::path& image_path = *path_ptr;
+
+    load_image_and_heatmap_to_drawing_area(
+        image_path.string(),
+        m_model1_image_to_heatmap_map[image_path.string()].first,
+        m_model1_test_img_pixbuf,
+        m_model1_test_heatmap_pixbuf,
+        m_model1_test_image_drawing_area
+    );
+    m_model1_test_img_anomaly_score_lbl->set_text(
+        std::to_string(m_model1_image_to_heatmap_map[image_path.string()].second)
+    );
+
+    load_image_and_heatmap_to_drawing_area(
+        image_path.string(),
+        m_model2_image_to_heatmap_map[image_path.string()].first,
+        m_model2_test_img_pixbuf,
+        m_model2_test_heatmap_pixbuf,
+        m_model2_test_image_drawing_area
+    );
+    m_model2_test_img_anomaly_score_lbl->set_text(
+        std::to_string(m_model2_image_to_heatmap_map[image_path.string()].second)
+    );
+
+    std::cout << "Row activated for image: " << image_path << std::endl;
+}
+
+void MainWindow::on_eval_back_clicked()
+{
+    auto children = m_eval_test_images_lbox->get_children();
+    Gtk::ListBoxRow* current = m_eval_test_images_lbox->get_selected_row();
+    
+    for (size_t i = 1; i < children.size(); ++i) {
+        if (children[i] == current) {
+            if (auto* prev = dynamic_cast<Gtk::ListBoxRow*>(children[i - 1])) {
+                m_eval_test_images_lbox->select_row(*prev);
+                activate_eval_testing_images_row(prev);
+            }
+            break;
+        }
+    }
+}
+
+void MainWindow::on_eval_next_clicked()
+{
+    auto children = m_eval_test_images_lbox->get_children();
+    Gtk::ListBoxRow* current = m_eval_test_images_lbox->get_selected_row();
+    
+    for (size_t i = 0; i + 1 < children.size(); ++i) {
+        if (children[i] == current) {
+            if (auto* next = dynamic_cast<Gtk::ListBoxRow*>(children[i + 1])) {
+                m_eval_test_images_lbox->select_row(*next);
+                activate_eval_testing_images_row(next);
+            }
+            break;
+        }
+    }    
 }

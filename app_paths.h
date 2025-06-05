@@ -12,6 +12,7 @@ public:
     static const std::filesystem::path Models_Path;
     static const std::filesystem::path WIP_Path;
     static const std::filesystem::path WIP_Dataset_Path;
+    static const std::filesystem::path WIP_Testset_Path;
     static const std::filesystem::path WIP_Model_Path;
     static const std::filesystem::path Install_Share_Dir;
 

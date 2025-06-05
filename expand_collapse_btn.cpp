@@ -4,7 +4,8 @@
 #include <gtkmm/cssprovider.h>
 
 #include <iostream>
-ExpandCollapseButton::ExpandCollapseButton()
+ExpandCollapseButton::ExpandCollapseButton(bool initial_expanded)
+    : is_expanded(initial_expanded)
 {
     // Load CSS once and apply
     static auto css_provider = []() {
@@ -37,7 +38,7 @@ ExpandCollapseButton::ExpandCollapseButton()
     get_style_context()->add_class("borderless");
 
     update_icon(); // Load initial icon
-    set_expanded(false);  // Initial state: collapsed
+    set_expanded(initial_expanded);  // Initial state: collapsed
     signal_clicked().connect(sigc::mem_fun(*this, &ExpandCollapseButton::on_button_clicked));
 }
 

@@ -7,7 +7,7 @@
 
 class ExpandCollapseButton : public Gtk::Button {
 public:
-    ExpandCollapseButton();
+    ExpandCollapseButton(bool initial_expanded = false);
 
     // External access
     void set_expanded(bool expanded);
