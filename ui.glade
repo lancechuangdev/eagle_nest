@@ -275,10 +275,11 @@
                       </packing>
                     </child>
                     <child>
-                      <!-- n-columns=2 n-rows=4 -->
+                      <!-- n-columns=2 n-rows=5 -->
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="row-spacing">10</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -349,10 +350,13 @@
                                 <property name="position">4</property>
                               </packing>
                             </child>
+                            <child>
+                              <placeholder/>
+                            </child>
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">0</property>
+                            <property name="top-attach">1</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -361,8 +365,6 @@
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="margin-end">5</property>
-                            <property name="margin-top">5</property>
-                            <property name="margin-bottom">5</property>
                             <property name="hexpand">True</property>
                             <property name="vexpand">True</property>
                             <property name="shadow-type">in</property>
@@ -381,14 +383,13 @@
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">2</property>
+                            <property name="top-attach">3</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="margin-end">5</property>
                             <property name="spacing">5</property>
                             <child>
                               <object class="GtkButton" id="remove_train_image_btn">
@@ -436,15 +437,13 @@
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
-                            <property name="top-attach">3</property>
+                            <property name="top-attach">4</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkScrolledWindow">
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
-                            <property name="margin-top">5</property>
-                            <property name="margin-bottom">5</property>
                             <property name="hexpand">True</property>
                             <property name="vexpand">True</property>
                             <property name="shadow-type">in</property>
@@ -467,14 +466,13 @@
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
-                            <property name="top-attach">2</property>
+                            <property name="top-attach">3</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="margin-top">5</property>
                             <property name="spacing">5</property>
                             <child>
                               <object class="GtkImage">
@@ -505,7 +503,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">1</property>
+                            <property name="top-attach">0</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -605,7 +603,32 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">3</property>
+                            <property name="top-attach">4</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child>
+                              <object class="GtkCheckButton" id="show_unused_training_images_checkbtn">
+                                <property name="label" translatable="yes">Show Images Not in Training Set</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="draw-indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">2</property>
+                            <property name="width">2</property>
                           </packing>
                         </child>
                       </object>
@@ -616,7 +639,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                       </packing>
                     </child>
                     <child>
-                      <!-- n-columns=2 n-rows=7 -->
+                      <!-- n-columns=2 n-rows=8 -->
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -700,7 +723,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">4</property>
+                            <property name="top-attach">5</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -738,7 +761,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">1</property>
+                            <property name="top-attach">2</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -752,7 +775,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">2</property>
+                            <property name="top-attach">3</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -763,7 +786,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">3</property>
+                            <property name="top-attach">4</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -776,7 +799,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">0</property>
+                            <property name="top-attach">1</property>
                             <property name="width">2</property>
                           </packing>
                         </child>
@@ -876,7 +899,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">6</property>
+                            <property name="top-attach">7</property>
                           </packing>
                         </child>
                         <child>
@@ -931,7 +954,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
-                            <property name="top-attach">6</property>
+                            <property name="top-attach">7</property>
                           </packing>
                         </child>
                         <child>
@@ -960,7 +983,7 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">1</property>
-                            <property name="top-attach">5</property>
+                            <property name="top-attach">6</property>
                           </packing>
                         </child>
                         <child>
@@ -985,7 +1008,45 @@ Ensure your training data is complete and accurately represents the desired inpu
                           </object>
                           <packing>
                             <property name="left-attach">0</property>
-                            <property name="top-attach">5</property>
+                            <property name="top-attach">6</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="spacing">5</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="pixbuf">resource:///com/example/eagle_nest/info.svg</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="label" translatable="yes">Use this page to manage and review images in the test set.
+We recommend using Auto Split to separate test images from the training set, then fine-tune the selection manually if necessary.</property>
+                                <property name="wrap">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">0</property>
+                            <property name="width">2</property>
                           </packing>
                         </child>
                       </object>

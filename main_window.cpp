@@ -73,6 +73,14 @@ MainWindow::MainWindow(BaseObjectType *obj, Glib::RefPtr<Gtk::Builder> const &re
 
     m_builder->get_widget("train_image_category_cbox", m_train_image_category_cbox);
 
+    m_builder->get_widget("show_unused_training_images_checkbtn", m_show_unused_training_images_checkbtn);
+    if (m_show_unused_training_images_checkbtn)
+    {
+        m_show_unused_training_images_checkbtn->signal_toggled().connect([this]() {
+            m_show_unused_training_images = m_show_unused_training_images_checkbtn->get_active();
+        });
+    }
+
     m_builder->get_widget("train_images_refresh_btn", m_train_images_refresh_btn);
     if (m_train_images_refresh_btn)
     {
@@ -760,6 +768,16 @@ void MainWindow::on_dataset_source_changed()
         return;
     }
 
+    if (id == "training")
+    {
+        m_show_unused_training_images_checkbtn->set_active(false);
+        m_show_unused_training_images_checkbtn->set_sensitive(false);
+    }
+    else
+    {
+        m_show_unused_training_images_checkbtn->set_sensitive(true);
+    }
+
     // Handle valid selection
     std::cout << "Selected ID: " << id << std::endl;
 }
@@ -1138,6 +1156,12 @@ void MainWindow::on_train_images_refresh_clicked()
                                     
                                     if (it != images_json.end())
                                     {
+                                        if (m_show_unused_training_images)
+                                        {
+                                            // If the image is already in the dataset, skip it
+                                            continue;
+                                        }
+
                                         auto& image_entry = *it;
                                         m_images_from_datasources.emplace_back(ImageInfo{
                                             image_entry["img_id"],

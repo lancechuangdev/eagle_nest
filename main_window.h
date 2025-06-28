@@ -38,6 +38,7 @@ protected:
     Gtk::Grid *m_dataset_sources_grid;
     Gtk::ComboBoxText *m_dataset_sources_cbox;
     Gtk::ComboBoxText *m_train_image_category_cbox;
+    Gtk::CheckButton *m_show_unused_training_images_checkbtn;
     Gtk::Button *m_train_images_refresh_btn;
     Gtk::ListBox *m_explorer_train_images_lbox;
     Gtk::DrawingArea *m_explorer_train_image_drawing_area;
@@ -233,6 +234,7 @@ private:
     std::vector<std::pair<Gtk::Label*, Gtk::Label*>> m_datasources_connections;
     std::vector<Gtk::Label*> m_connection_status_labels;
     std::vector<DatasetSource> m_dataset_sources;
+    bool m_show_unused_training_images = false;
     Glib::RefPtr<Gdk::Pixbuf> m_explorer_train_img_pixbuf;
     Glib::RefPtr<Gdk::Pixbuf> m_explorer_test_img_pixbuf;
     std::vector<ImageInfo> m_images_from_datasources;
